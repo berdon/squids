@@ -114,6 +114,16 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("undefer", id, "--wat")
 	mustOK("undefer", id, "--json")
 
+	mustFail("rename")
+	mustFail("rename", id)
+	mustFail("rename", id, "new", "--wat")
+	mustOK("rename", id, "bd-renamed", "--json")
+	id = "bd-renamed"
+	mustFail("rename-prefix")
+	mustFail("rename-prefix", "bd", "sq", "--wat")
+	mustOK("rename-prefix", "sq", "--json")
+	id = "sq-renamed"
+
 	mustFail("duplicate")
 	mustFail("duplicate", id, "--wat")
 	mustFail("duplicate", id, "--json")

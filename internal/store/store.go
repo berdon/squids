@@ -683,6 +683,86 @@ func ReadyTasks(db *sql.DB) ([]Task, error) {
 	return out, nil
 }
 
+func RenameTask(db *sql.DB, oldID, newID string) (*Task, error) {
+	if strings.TrimSpace(oldID) == "" || strings.TrimSpace(newID) == "" {
+		return nil, errors.New("old and new id are required")
+	}
+	if oldID == newID {
+		return nil, errors.New("old and new id must differ")
+	}
+	if _, err := ShowTask(db, oldID); err != nil {
+		return nil, err
+	}
+	if _, err := ShowTask(db, newID); err == nil {
+		return nil, fmt.Errorf("issue already exists: %s", newID)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	stmts := []struct {
+		q    string
+		args []any
+	}{
+		{`UPDATE tasks SET id=?,updated_at=? WHERE id=?`, []any{newID, time.Now().UTC().Format(time.RFC3339), oldID}},
+		{`UPDATE dependencies SET issue_id=? WHERE issue_id=?`, []any{newID, oldID}},
+		{`UPDATE dependencies SET depends_on_id=? WHERE depends_on_id=?`, []any{newID, oldID}},
+		{`UPDATE comments SET issue_id=? WHERE issue_id=?`, []any{newID, oldID}},
+	}
+	for _, s := range stmts {
+		if _, err := tx.Exec(s.q, s.args...); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	// refresh deps_json for tasks potentially impacted by dependency id rewrites
+	rows, err := db.Query(`SELECT DISTINCT issue_id FROM dependencies WHERE issue_id=? OR depends_on_id=?`, newID, newID)
+	if err == nil {
+		defer rows.Close()
+		seen := map[string]bool{}
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err == nil && !seen[id] {
+				seen[id] = true
+				_ = syncTaskDepsJSON(db, id)
+			}
+		}
+	}
+
+	return ShowTask(db, newID)
+}
+
+func RenamePrefix(db *sql.DB, oldPrefix, newPrefix string) (int, error) {
+	if strings.TrimSpace(oldPrefix) == "" || strings.TrimSpace(newPrefix) == "" {
+		return 0, errors.New("old and new prefix are required")
+	}
+	if oldPrefix == newPrefix {
+		return 0, nil
+	}
+	tasks, err := ListTasks(db)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, t := range tasks {
+		if strings.HasPrefix(t.ID, oldPrefix+"-") {
+			newID := newPrefix + t.ID[len(oldPrefix):]
+			if _, err := RenameTask(db, t.ID, newID); err != nil {
+				return count, err
+			}
+			count++
+		}
+	}
+	_, _ = db.Exec(`INSERT OR REPLACE INTO config(key,value) VALUES ('id_prefix', ?)`, newPrefix)
+	return count, nil
+}
+
 type Comment struct {
 	ID        int    `json:"id"`
 	IssueID   string `json:"issue_id"`

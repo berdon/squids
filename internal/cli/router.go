@@ -53,6 +53,10 @@ func Run(args []string) int {
 		return cmdDefer(args[1:])
 	case "undefer":
 		return cmdUndefer(args[1:])
+	case "rename":
+		return cmdRename(args[1:])
+	case "rename-prefix":
+		return cmdRenamePrefix(args[1:])
 	case "duplicate":
 		return cmdDuplicate(args[1:])
 	case "supersede":

@@ -85,6 +85,44 @@ func TestUpdateAndDepsBranches(t *testing.T) {
 	}
 }
 
+func TestRenameTaskAndPrefix(t *testing.T) {
+	w, done := openTestDB(t)
+	defer done()
+
+	a, _ := CreateTask(w.DB, CreateInput{Title: "A", IssueType: "task", Priority: 1})
+	b, _ := CreateTask(w.DB, CreateInput{Title: "B", IssueType: "task", Priority: 1})
+	_ = AddDependency(w.DB, a.ID, b.ID, "blocks")
+	_, _ = AddComment(w.DB, a.ID, "me", "hello")
+
+	renamed, err := RenameTask(w.DB, a.ID, "bd-renamed")
+	if err != nil {
+		t.Fatalf("rename task: %v", err)
+	}
+	if renamed.ID != "bd-renamed" {
+		t.Fatalf("expected renamed id got %s", renamed.ID)
+	}
+	if _, err := ShowTask(w.DB, a.ID); err == nil {
+		t.Fatalf("old id should be gone")
+	}
+	if deps, err := ListDependencies(w.DB, "bd-renamed"); err != nil || len(deps) == 0 {
+		t.Fatalf("expected deps preserved err=%v deps=%v", err, deps)
+	}
+	if comments, err := ListComments(w.DB, "bd-renamed"); err != nil || len(comments) == 0 {
+		t.Fatalf("expected comments preserved err=%v comments=%v", err, comments)
+	}
+
+	n, err := RenamePrefix(w.DB, "bd", "sq")
+	if err != nil {
+		t.Fatalf("rename prefix: %v", err)
+	}
+	if n < 1 {
+		t.Fatalf("expected at least one rename, got %d", n)
+	}
+	if _, err := ShowTask(w.DB, "sq-renamed"); err != nil {
+		t.Fatalf("expected sq-renamed to exist: %v", err)
+	}
+}
+
 func TestReadyTasksFiltersBlocked(t *testing.T) {
 	w, done := openTestDB(t)
 	defer done()

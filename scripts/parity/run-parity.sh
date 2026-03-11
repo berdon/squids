@@ -179,7 +179,15 @@ assert_contains "$DEFER_JSON" "deferred"
 UNDEFER_JSON="$(run_target "undefer $TASK_ID --json")"
 assert_contains "$UNDEFER_JSON" "open"
 
-# 6f) duplicate/supersede parity
+# 6f) rename/rename-prefix parity
+REN_OLD_JSON="$(run_target "create 'Rename target' --type task --priority 2 --json")"
+REN_OLD_ID="$(json_field "$REN_OLD_JSON" "id")"
+REN_NEW_ID="bd-renamed-target"
+REN_JSON="$(run_target "rename $REN_OLD_ID $REN_NEW_ID --json")"
+assert_contains "$REN_JSON" "$REN_NEW_ID"
+REN_SHOW_JSON="$(run_target "show $REN_NEW_ID --json")"
+assert_eq "$(json_field "$REN_SHOW_JSON" "id")" "$REN_NEW_ID"
+# 6g) duplicate/supersede parity
 ORIG_JSON="$(run_target "create 'Original issue' --type bug --priority 1 --json")"
 ORIG_ID="$(json_field "$ORIG_JSON" "id")"
 DUP_JSON="$(run_target "create 'Duplicate issue' --type bug --priority 2 --json")"

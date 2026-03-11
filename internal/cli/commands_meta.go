@@ -343,6 +343,66 @@ func cmdUndefer(args []string) int {
 	return printJSON(out)
 }
 
+func cmdRename(args []string) int {
+	if len(args) < 2 {
+		return failUsage("usage: sq rename <old-id> <new-id> [--json]")
+	}
+	oldID, newID := args[0], args[1]
+	for i := 2; i < len(args); i++ {
+		if args[i] == "--json" {
+			continue
+		}
+		if strings.HasPrefix(args[i], "-") {
+			return failUsage("unknown flag: " + args[i])
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	t, err := store.RenameTask(db, oldID, newID)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(t)
+}
+
+func cmdRenamePrefix(args []string) int {
+	if len(args) < 1 {
+		return failUsage("usage: sq rename-prefix <new-prefix> [--json] OR sq rename-prefix <old-prefix> <new-prefix> [--json]")
+	}
+	filtered := make([]string, 0, len(args))
+	for _, a := range args {
+		if a == "--json" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+		filtered = append(filtered, a)
+	}
+	if len(filtered) < 1 || len(filtered) > 2 {
+		return failUsage("usage: sq rename-prefix <new-prefix> [--json] OR sq rename-prefix <old-prefix> <new-prefix> [--json]")
+	}
+	oldPrefix := "bd"
+	newPrefix := filtered[0]
+	if len(filtered) == 2 {
+		oldPrefix = filtered[0]
+		newPrefix = filtered[1]
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	n, err := store.RenamePrefix(db, oldPrefix, newPrefix)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"renamed": n, "old_prefix": oldPrefix, "new_prefix": newPrefix})
+}
+
 func cmdDuplicate(args []string) int {
 	if len(args) == 0 {
 		return failUsage("usage: sq duplicate <id> --of <canonical-id> [--json]")
