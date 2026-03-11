@@ -71,6 +71,7 @@ func usage() {
 	fmt.Println("  search  Search tasks")
 	fmt.Println("  count   Count tasks")
 	fmt.Println("  status  Show status summary")
+	fmt.Println("  version Show CLI version")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {

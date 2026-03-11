@@ -7,6 +7,8 @@ import (
 	"gitea/auhanson/squids/internal/store"
 )
 
+var Version = "dev"
+
 func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
@@ -163,4 +165,16 @@ func cmdStatus() int {
 		return failRuntime(err.Error())
 	}
 	return printJSON(s)
+}
+
+func cmdVersion(args []string) int {
+	for _, a := range args {
+		if a == "--json" {
+			return printJSON(map[string]any{"version": Version})
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+	}
+	return printJSON(map[string]any{"version": Version})
 }
