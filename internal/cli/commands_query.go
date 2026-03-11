@@ -641,6 +641,36 @@ func cmdHooks(args []string) int {
 	return printJSON(status)
 }
 
+func cmdOnboard(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "## Issue Tracking")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "This project uses **sq (squids)** for issue tracking.")
+	_, _ = fmt.Fprintln(os.Stdout, "Run `sq quickstart` for workflow context.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "**Quick reference:**")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq ready --json` - Find unblocked work")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq create \"Title\" --type task --priority 2 --json` - Create issue")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq close <id> --reason \"Done\" --json` - Complete work")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "For full workflow details: `sq quickstart`")
+	return 0
+}
+
 func cmdCompletion(args []string) int {
 	if len(args) == 0 {
 		_, _ = fmt.Fprintln(os.Stdout, "sq completion [bash|zsh|fish|powershell]")

@@ -4,13 +4,13 @@ _Generated: 2026-03-11 06:36_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **38**
-- Shared commands: **38**
-- Missing in sq: **55**
+- sq commands: **39**
+- Shared commands: **39**
+- Missing in sq: **54**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -35,6 +35,7 @@ _Generated: 2026-03-11 06:36_
 | `init` | 29 | — |
 | `label` | 13 | `propagate` |
 | `list` | 73 | — |
+| `onboard` | 0 | — |
 | `orphans` | 15 | — |
 | `q` | 16 | — |
 | `query` | 14 | `assignee`, `closed`, `created`, `description`, `ephemeral`, `id` …(+12) |
@@ -134,6 +135,10 @@ _Generated: 2026-03-11 06:36_
 
 ### `list`
 - Missing flags in sq (73): `--actor`, `--all`, `--assignee`, `--closed-after`, `--closed-before`, `--created-after`, `--created-before`, `--db`, `--defer-after`, `--defer-before`, `--deferred`, `--desc-contains`, `--dolt-auto-commit`, `--due-after`, `--due-before`, `--empty-description`, `--format`, `--has-metadata-key`, `--help`, `--id`, `--include-gates`, `--include-infra`, `--include-templates`, `--label`, `--label-any`, `--label-pattern`, `--label-regex`, `--limit`, `--long`, `--metadata-field`, `--mol-type`, `--no-assignee`, `--no-labels`, `--no-parent`, `--no-pinned`, `--notes-contains`, `--overdue`, `--parent`, `--pinned`, `--pretty`, `--priority`, `--priority-max`, `--priority-min`, `--profile`, `--quiet`, `--readonly`, `--ready`, `--reverse`, `--rig`, `--sandbox`, `--sort`, `--spec`, `--status`, `--title`, `--title-contains`, `--tree`, `--type`, `--updated-after`, `--updated-before`, `--verbose`, `--watch`, `--wisp-type`, `-a`, `-h`, `-l`, `-n`, `-p`, `-q`, `-r`, `-s`, `-t`, `-v`, `-w`
+- Missing subcommands in sq: none
+
+### `onboard`
+- Missing flags in sq (0): none
 - Missing subcommands in sq: none
 
 ### `orphans`
