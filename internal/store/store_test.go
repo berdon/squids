@@ -44,6 +44,14 @@ func TestDefaultDBPath(t *testing.T) {
 	}
 }
 
+func TestEnsureInitializedIdempotent(t *testing.T) {
+	w, done := openTestDB(t)
+	defer done()
+	if err := EnsureInitialized(w.DB); err != nil {
+		t.Fatalf("ensure initialized: %v", err)
+	}
+}
+
 func TestLabelsMetadataAndDepsParity(t *testing.T) {
 	w, done := openTestDB(t)
 	defer done()

@@ -39,6 +39,12 @@ TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 
 Outputs logs and deltas under `.parity-results/`.
 
+### SQLite concurrency smoke test
+
+```bash
+./scripts/parity/concurrency-smoke.sh
+```
+
 ## Docs
 
 - Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`

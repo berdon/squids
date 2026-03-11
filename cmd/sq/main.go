@@ -68,7 +68,7 @@ func openTaskDB() (*sql.DB, string, error) {
 	if err != nil {
 		return nil, dbPath, err
 	}
-	if err := store.Init(db); err != nil {
+	if err := store.EnsureInitialized(db); err != nil {
 		_ = db.Close()
 		return nil, dbPath, err
 	}
@@ -105,7 +105,7 @@ func cmdReady() int {
 		return failRuntime(err.Error())
 	}
 	defer db.Close()
-	if err := store.Init(db); err != nil {
+	if err := store.EnsureInitialized(db); err != nil {
 		return failRuntime(err.Error())
 	}
 	if err := store.Ping(db); err != nil {

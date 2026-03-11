@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -137,6 +136,21 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 	}
 
 	if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS counters (
+  key TEXT PRIMARY KEY,
+  value INTEGER NOT NULL
+);
+`); err != nil {
+		return fmt.Errorf("create counters: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+INSERT OR IGNORE INTO counters(key,value) VALUES ('issue_seq',0);
+`); err != nil {
+		return fmt.Errorf("seed counter: %w", err)
+	}
+
+	if _, err := tx.Exec(`
 INSERT OR IGNORE INTO schema_migrations(version) VALUES (?);
 `, currentSchemaVersion); err != nil {
 		return fmt.Errorf("insert schema version: %w", err)
@@ -146,6 +160,18 @@ INSERT OR IGNORE INTO schema_migrations(version) VALUES (?);
 		return fmt.Errorf("commit schema init: %w", err)
 	}
 	return nil
+}
+
+func EnsureInitialized(db *sql.DB) error {
+	if db == nil {
+		return errors.New("db is nil")
+	}
+	row := db.QueryRow(`SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='tasks'`)
+	var n int
+	if err := row.Scan(&n); err == nil && n > 0 {
+		return nil
+	}
+	return Init(db)
 }
 
 func CurrentVersion(db *sql.DB) (int, error) {
@@ -168,23 +194,27 @@ func Ping(db *sql.DB) error {
 }
 
 func nextID(db *sql.DB) (string, error) {
-	rows, err := db.Query(`SELECT id FROM tasks WHERE id LIKE 'bd-%'`)
+	tx, err := db.Begin()
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
-	max := 0
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return "", err
-		}
-		n, err := strconv.Atoi(strings.TrimPrefix(id, "bd-"))
-		if err == nil && n > max {
-			max = n
-		}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO counters(key,value) VALUES ('issue_seq',0)`); err != nil {
+		return "", err
 	}
-	return fmt.Sprintf("bd-%d", max+1), nil
+	if _, err := tx.Exec(`UPDATE counters SET value = value + 1 WHERE key='issue_seq'`); err != nil {
+		return "", err
+	}
+	row := tx.QueryRow(`SELECT value FROM counters WHERE key='issue_seq'`)
+	var n int
+	if err := row.Scan(&n); err != nil {
+		return "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("bd-%d", n), nil
 }
 
 func CreateTask(db *sql.DB, in CreateInput) (*Task, error) {
