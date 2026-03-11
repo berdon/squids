@@ -25,6 +25,8 @@ This contract defines behavior that must match for parity tests to pass.
 - `sq todo [list] --json`
 - `sq todo add <title> [--priority <n>] --json`
 - `sq todo done <id> [--reason <text>] --json`
+- `sq children <parent-id> --json`
+- `sq blocked --json`
 
 ## JSON Contract Rules
 
@@ -73,6 +75,10 @@ This contract defines behavior that must match for parity tests to pass.
 - `todo add <title> ...` creates an `issue_type=task` entry (default priority 2 unless overridden).
 - `todo` / `todo list` returns open `task` issues.
 - `todo done <id>` closes the referenced todo issue.
+
+### Children / blocked views
+- `children <parent-id>` lists child issues linked by `parent-child` dependency edges.
+- `blocked` lists open issues that are currently blocked by open blockers (`blocks` dependency edges), with `blocked_by_count` and `blocked_by` IDs.
 
 ## Exit Code Contract
 

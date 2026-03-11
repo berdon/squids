@@ -134,7 +134,21 @@ if [[ "$DEP_LIST_AFTER_REMOVE" == *"$SECOND_ID"* ]]; then
   exit 1
 fi
 
-# 6c) comments command family parity (add + list)
+# 6c) children/blocked parity
+PARENT_JSON="$(run_target "create 'Parent issue' --type epic --priority 1 --json")"
+PARENT_ID="$(json_field "$PARENT_JSON" "id")"
+CHILD_JSON="$(run_target "create 'Child issue' --type task --priority 2 --deps parent-child:$PARENT_ID --json")"
+CHILD_ID="$(json_field "$CHILD_JSON" "id")"
+BLOCKER_JSON="$(run_target "create 'Blocker issue' --type task --priority 1 --json")"
+BLOCKER_ID="$(json_field "$BLOCKER_JSON" "id")"
+run_target "dep add $BLOCKER_ID $CHILD_ID --json" >/dev/null
+CHILDREN_JSON="$(run_target "children $PARENT_ID --json")"
+assert_contains "$CHILDREN_JSON" "$CHILD_ID"
+BLOCKED_JSON="$(run_target "blocked --json")"
+assert_contains "$BLOCKED_JSON" "$CHILD_ID"
+assert_contains "$BLOCKED_JSON" "$BLOCKER_ID"
+
+# 6d) comments command family parity (add + list)
 COMMENT_ADD_JSON="$(run_target "comments add $TASK_ID 'hello comment' --json")"
 assert_contains "$COMMENT_ADD_JSON" "hello comment"
 COMMENT_LIST_JSON="$(run_target "comments $TASK_ID --json")"

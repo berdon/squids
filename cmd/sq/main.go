@@ -52,6 +52,8 @@ func usage() {
 	fmt.Println("  dep     Manage dependencies")
 	fmt.Println("  comments Manage comments")
 	fmt.Println("  todo    Manage TODO items")
+	fmt.Println("  children List child tasks for a parent")
+	fmt.Println("  blocked Show blocked tasks")
 	fmt.Println("  query   Query tasks")
 	fmt.Println("  search  Search tasks")
 	fmt.Println("  count   Count tasks")
@@ -137,6 +139,7 @@ func cmdCreate(args []string) int {
 		creator = strings.TrimSpace(os.Getenv("USER"))
 	}
 	in := store.CreateInput{Title: args[0], IssueType: "task", Creator: creator}
+	deps := make([][2]string, 0)
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--type":
@@ -158,6 +161,22 @@ func cmdCreate(args []string) int {
 				in.Description = args[i+1]
 				i++
 			}
+		case "--deps":
+			if i+1 < len(args) {
+				spec := args[i+1]
+				depType := "blocks"
+				depID := spec
+				if strings.Contains(spec, ":") {
+					parts := strings.SplitN(spec, ":", 2)
+					depType = strings.TrimSpace(parts[0])
+					depID = strings.TrimSpace(parts[1])
+				}
+				if depID == "" {
+					return failUsage("invalid --deps value")
+				}
+				deps = append(deps, [2]string{depType, depID})
+				i++
+			}
 		case "--json":
 			// accepted, no-op
 		default:
@@ -172,6 +191,15 @@ func cmdCreate(args []string) int {
 	}
 	defer db.Close()
 	t, err := store.CreateTask(db, in)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	for _, d := range deps {
+		if err := store.AddDependency(db, t.ID, d[1], d[0]); err != nil {
+			return failRuntime(err.Error())
+		}
+	}
+	t, err = store.ShowTask(db, t.ID)
 	if err != nil {
 		return failRuntime(err.Error())
 	}
@@ -576,6 +604,50 @@ func cmdTodo(args []string) int {
 	}
 }
 
+func cmdChildren(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq children <parent-id> [--json]")
+	}
+	parentID := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.ListChildren(db, parentID)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
+func cmdBlocked(args []string) int {
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			continue
+		case "--parent":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.ListBlocked(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
 func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
@@ -718,6 +790,10 @@ func main() {
 		os.Exit(cmdComments(os.Args[2:]))
 	case "todo":
 		os.Exit(cmdTodo(os.Args[2:]))
+	case "children":
+		os.Exit(cmdChildren(os.Args[2:]))
+	case "blocked":
+		os.Exit(cmdBlocked(os.Args[2:]))
 	case "query":
 		os.Exit(cmdQuery(os.Args[2:]))
 	case "search":

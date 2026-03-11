@@ -310,9 +310,15 @@ func CreateTask(db *sql.DB, in CreateInput) (*Task, error) {
 	minLen, _ := strconv.Atoi(getConfigValue(db, "min_hash_length", "3"))
 	maxLen, _ := strconv.Atoi(getConfigValue(db, "max_hash_length", "8"))
 	maxProb, _ := strconv.ParseFloat(getConfigValue(db, "max_collision_prob", "0.25"), 64)
-	if minLen < 3 { minLen = 3 }
-	if maxLen > 8 { maxLen = 8 }
-	if maxLen < minLen { maxLen = minLen }
+	if minLen < 3 {
+		minLen = 3
+	}
+	if maxLen > 8 {
+		maxLen = 8
+	}
+	if maxLen < minLen {
+		maxLen = minLen
+	}
 
 	var numIssues int
 	_ = db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE id LIKE ?`, prefix+"-%").Scan(&numIssues)
@@ -590,6 +596,75 @@ func ListDependencies(db *sql.DB, issueID string) ([]string, error) {
 			return nil, err
 		}
 		out = append(out, d)
+	}
+	return out, nil
+}
+
+func ListChildren(db *sql.DB, parentID string) ([]Task, error) {
+	rows, err := db.Query(`SELECT issue_id FROM dependencies WHERE dep_type='parent-child' AND depends_on_id=? ORDER BY issue_id`, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Task, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		t, err := ShowTask(db, id)
+		if err != nil {
+			continue
+		}
+		out = append(out, *t)
+	}
+	return out, nil
+}
+
+type BlockedItem struct {
+	Task
+	BlockedByCount int      `json:"blocked_by_count"`
+	BlockedBy      []string `json:"blocked_by"`
+}
+
+func ListBlocked(db *sql.DB) ([]BlockedItem, error) {
+	rows, err := db.Query(`
+		SELECT d.depends_on_id, d.issue_id
+		FROM dependencies d
+		JOIN tasks blocker ON blocker.id = d.issue_id
+		WHERE d.dep_type='blocks' AND blocker.status != 'closed'
+		ORDER BY d.depends_on_id, d.issue_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byTarget := map[string][]string{}
+	order := make([]string, 0)
+	seen := map[string]bool{}
+	for rows.Next() {
+		var targetID, blockerID string
+		if err := rows.Scan(&targetID, &blockerID); err != nil {
+			return nil, err
+		}
+		byTarget[targetID] = append(byTarget[targetID], blockerID)
+		if !seen[targetID] {
+			seen[targetID] = true
+			order = append(order, targetID)
+		}
+	}
+
+	out := make([]BlockedItem, 0, len(order))
+	for _, id := range order {
+		t, err := ShowTask(db, id)
+		if err != nil {
+			continue
+		}
+		if t.Status == "closed" {
+			continue
+		}
+		blockedBy := byTarget[id]
+		out = append(out, BlockedItem{Task: *t, BlockedByCount: len(blockedBy), BlockedBy: blockedBy})
 	}
 	return out, nil
 }
