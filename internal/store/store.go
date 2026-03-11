@@ -58,7 +58,10 @@ type UpdateInput struct {
 	Claim       bool
 }
 
-// Open opens a SQLite database handle with WAL + busy timeout configured.
+// Open configures a SQLite handle for local multi-process use.
+//
+// Separation of concerns: CLI code should not manage low-level SQLite pragmas;
+// storage defaults are centralized here.
 func Open(dbPath string) (*sql.DB, error) {
 	if dbPath == "" {
 		return nil, errors.New("db path required")
@@ -90,6 +93,7 @@ func DefaultDBPath(cwd string) string {
 	return filepath.Join(cwd, ".sq", "tasks.sqlite")
 }
 
+// Init creates core schema/tables and seeds required config defaults.
 func Init(db *sql.DB) error {
 	if db == nil {
 		return errors.New("db is nil")
@@ -280,6 +284,7 @@ func nextCounterID(db *sql.DB, prefix string) (string, error) {
 	return fmt.Sprintf("%s-%d", prefix, n), nil
 }
 
+// CreateTask creates a task-like issue record and returns the stored entity.
 func CreateTask(db *sql.DB, in CreateInput) (*Task, error) {
 	if strings.TrimSpace(in.Title) == "" {
 		return nil, errors.New("title is required")

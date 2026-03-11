@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build release binaries
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=amd64 go build -o dist/sq-linux-amd64 ./cmd/sq
+          GOOS=darwin GOARCH=arm64 go build -o dist/sq-darwin-arm64 ./cmd/sq
+          GOOS=windows GOARCH=amd64 go build -o dist/sq-windows-amd64.exe ./cmd/sq
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/sq-linux-amd64
+            dist/sq-darwin-arm64
+            dist/sq-windows-amd64.exe
+            dist/checksums.txt

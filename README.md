@@ -110,6 +110,15 @@ If your target needs global args before the command:
 TARGET_ARGS="--json" ./scripts/parity/run-parity.sh
 ```
 
+## CI/CD (GitHub Actions)
+
+- CI workflow: `.github/workflows/ci.yml`
+  - Runs on pushes/PRs
+  - Executes `go test`, `make build`, sq parity, and concurrency smoke tests
+- Release workflow: `.github/workflows/release.yml`
+  - Runs on tags like `v0.1.0`
+  - Builds cross-platform binaries and publishes a GitHub Release with checksums
+
 ## Documentation
 
 - Getting started: `docs/GETTING_STARTED.md`

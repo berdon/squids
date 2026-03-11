@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Build sq
+        run: make build
+
+      - name: Run sq parity suite
+        run: TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
+
+      - name: Run concurrency smoke
+        run: ./scripts/parity/concurrency-smoke.sh
