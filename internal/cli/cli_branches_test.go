@@ -157,6 +157,9 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("count", "-s", "open", "--json")
 	mustOK("status", "--json")
 	mustFail("version", "--wat")
-	mustOK("version")
+	v := mustOK("version")
+	if !strings.Contains(v, "sq version") {
+		t.Fatalf("expected plain version output, got %q", v)
+	}
 	mustOK("version", "--json")
 }

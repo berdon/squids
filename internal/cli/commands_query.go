@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -168,13 +170,22 @@ func cmdStatus() int {
 }
 
 func cmdVersion(args []string) int {
+	jsonOut := false
 	for _, a := range args {
 		if a == "--json" {
-			return printJSON(map[string]any{"version": Version})
+			jsonOut = true
+			continue
 		}
 		if strings.HasPrefix(a, "-") {
 			return failUsage("unknown flag: " + a)
 		}
 	}
-	return printJSON(map[string]any{"version": Version})
+	if jsonOut {
+		return printJSON(map[string]any{"version": Version})
+	}
+	_, err := fmt.Fprintf(os.Stdout, "sq version %s\n", Version)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return 0
 }

@@ -1,16 +1,16 @@
 # bd ↔ sq Deep Parity Matrix (Command/Flag/Subcommand Gaps)
 
-_Generated: 2026-03-11 05:47_
+_Generated: 2026-03-11 05:56_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **29**
-- Shared commands: **29**
-- Missing in sq: **64**
+- sq commands: **30**
+- Shared commands: **30**
+- Missing in sq: **63**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `help`, `history`, `hooks`, `human`, `info`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `version`, `where`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `help`, `history`, `hooks`, `human`, `info`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `where`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -45,6 +45,7 @@ _Generated: 2026-03-11 05:47_
 | `types` | 12 | — |
 | `undefer` | 12 | — |
 | `update` | 42 | — |
+| `version` | 12 | — |
 
 ## Detailed gaps (shared commands)
 
@@ -163,3 +164,11 @@ _Generated: 2026-03-11 05:47_
 ### `update`
 - Missing flags in sq (42): `--acceptance`, `--actor`, `--append-notes`, `--await-id`, `--body-file`, `--db`, `--defer`, `--description`, `--design`, `--dolt-auto-commit`, `--due`, `--ephemeral`, `--estimate`, `--external-ref`, `--help`, `--metadata`, `--notes`, `--parent`, `--persistent`, `--priority`, `--profile`, `--quiet`, `--readonly`, `--remove-label`, `--sandbox`, `--session`, `--set-labels`, `--spec-id`, `--stdin`, `--title`, `--type`, `--unset-metadata`, `--verbose`, `-a`, `-d`, `-e`, `-h`, `-p`, `-q`, `-s`, `-t`, `-v`
 - Missing subcommands in sq: none
+
+### `version`
+- Missing flags in sq (12): `--actor`, `--db`, `--dolt-auto-commit`, `--help`, `--profile`, `--quiet`, `--readonly`, `--sandbox`, `--verbose`, `-h`, `-q`, `-v`
+- Missing subcommands in sq: none
+
+## Guardrails
+- Do **not** add dolt/server lifecycle or storage-internal commands to sq.
+- Before implementing parity behavior, verify semantics using both `bd <command> --help` and bd source.
