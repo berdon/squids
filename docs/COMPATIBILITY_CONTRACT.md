@@ -6,7 +6,8 @@ Squids is a SQLite-backed reimplementation of beads CLI behavior.
 
 - **Canonical binary name:** `sq`
 - Goal: match beads CLI semantics used by Village workflows and shell automation.
-- Explicitly out of scope for parity: dolt/server mechanics (`dolt` transport/server lifecycle internals).
+- **Dolt/server mechanics are intentionally not implemented** in squids.
+- Runtime model is local SQLite file(s) with multi-process concurrency support.
 
 ## Compatibility Targets
 
@@ -78,12 +79,26 @@ To reduce backend formatting noise while preserving semantic checks:
 - Compare semantic fields, not field order.
 - Ignore cosmetic warning lines unless explicitly contract-bound.
 
-## Out of Scope (explicit)
+## Non-Goals / Explicit Exclusions
 
-- Dolt server controls and diagnostics parity:
+The following beads mechanisms are explicitly excluded from squids:
+- Dolt server controls and diagnostics commands:
   - `bd dolt start/stop/test/set ...`
-- Networked/multi-node dolt behavior
-- Any transport-layer implementation details beyond CLI-visible task semantics
+- Any server lifecycle management requirement
+- Networked/multi-node dolt replication behavior
+
+These are not deferred features; they are intentionally omitted by design.
+
+## Concurrency Requirements
+
+Squids must support concurrent access from multiple processes/actors on the same host.
+
+Baseline requirements:
+- SQLite WAL mode enabled
+- Busy timeout configured
+- Retry/backoff behavior for lock contention in write paths
+- Short transactions with deterministic commit boundaries
+- No requirement for external DB server process
 
 ## Evolution Policy
 

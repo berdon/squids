@@ -2,6 +2,18 @@
 
 SQLite-backed, beads-compatible task CLI (planned).
 
+Design constraints:
+- Binary name is `sq`
+- No dolt/server mechanics
+- Concurrency supported via single-file SQLite backend (multi-process safe)
+
+## Build
+
+```bash
+make build
+./bin/sq --help
+```
+
 ## Parity Shell Automation (sq-001)
 
 This repo starts with a black-box parity suite that can run against an existing CLI target
