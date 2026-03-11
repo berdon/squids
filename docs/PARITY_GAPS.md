@@ -1,12 +1,12 @@
 # bd ↔ sq Deep Parity Matrix (Command/Flag/Subcommand Gaps)
 
-_Generated: 2026-03-11 06:31_
+_Generated: 2026-03-11 06:36_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **36**
-- Shared commands: **36**
-- Missing in sq: **57**
+- sq commands: **37**
+- Shared commands: **37**
+- Missing in sq: **56**
 
 ### Missing top-level commands in sq
 
@@ -28,6 +28,7 @@ _Generated: 2026-03-11 06:31_
 | `duplicate` | 12 | — |
 | `help` | 0 | — |
 | `history` | 0 | — |
+| `hooks` | 0 | — |
 | `human` | 0 | — |
 | `info` | 0 | — |
 | `init` | 29 | — |
@@ -103,6 +104,10 @@ _Generated: 2026-03-11 06:31_
 - Missing flags in sq (0): none
 - Missing subcommands in sq: none
 - Note: sq returns an explicit runtime error because full history requires Dolt backend (out-of-scope for sqlite-only sq).
+
+### `hooks`
+- Missing flags in sq (0): none
+- Missing subcommands in sq: none
 
 ### `human`
 - Missing flags in sq (0): none

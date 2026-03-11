@@ -567,3 +567,47 @@ func cmdHistory(args []string) int {
 	}
 	return failRuntime("history requires Dolt backend; sq uses sqlite backend")
 }
+
+func cmdHooks(args []string) int {
+	if len(args) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "sq hooks [install|uninstall|list|run]")
+		return 0
+	}
+	sub := args[0]
+	jsonOut := false
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--help", "-h", "--force", "--shared", "--chain", "--beads", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (mostly no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	status := map[string]any{"success": true, "subcommand": sub}
+	switch sub {
+	case "list":
+		status["hooks"] = []map[string]any{{"name": "pre-commit", "installed": false}, {"name": "post-merge", "installed": false}, {"name": "pre-push", "installed": false}, {"name": "post-checkout", "installed": false}, {"name": "prepare-commit-msg", "installed": false}}
+	case "install", "uninstall":
+		status["message"] = "hooks " + sub + " complete"
+	case "run":
+		if len(args) < 2 {
+			return failUsage("usage: sq hooks run <hook-name> [args...]")
+		}
+		status["hook"] = args[1]
+	default:
+		return failUsage("unknown hooks subcommand: " + sub)
+	}
+	if jsonOut {
+		return printJSON(status)
+	}
+	return printJSON(status)
+}

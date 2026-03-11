@@ -91,6 +91,8 @@ func Run(args []string) int {
 		return cmdQuickstart(args[1:])
 	case "history":
 		return cmdHistory(args[1:])
+	case "hooks":
+		return cmdHooks(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()

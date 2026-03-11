@@ -78,6 +78,7 @@ func usage() {
 	fmt.Println("  human   Human-focused command group")
 	fmt.Println("  quickstart Show quick start guide")
 	fmt.Println("  history  Show issue history (not supported on sq sqlite backend)")
+	fmt.Println("  hooks    Manage git hooks (compat surface)")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
