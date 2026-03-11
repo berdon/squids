@@ -1,4 +1,4 @@
-module gitea/auhanson/squids
+module github.com/berdon/squids
 
 go 1.22
 

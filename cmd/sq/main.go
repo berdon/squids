@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"gitea/auhanson/squids/internal/cli"
+	"github.com/berdon/squids/internal/cli"
 )
 
 func run(args []string) int {

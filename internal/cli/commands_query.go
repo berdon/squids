@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitea/auhanson/squids/internal/store"
+	"github.com/berdon/squids/internal/store"
 )
 
 var Version = "dev"

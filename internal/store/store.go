@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"gitea/auhanson/squids/internal/idgen"
+	"github.com/berdon/squids/internal/idgen"
 	_ "github.com/mattn/go-sqlite3"
 )
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gitea/auhanson/squids/internal/store"
+	"github.com/berdon/squids/internal/store"
 )
 
 // Package cli owns command parsing/dispatch for the sq binary.
