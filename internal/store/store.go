@@ -1,6 +1,7 @@
 package store
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -136,21 +137,6 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 	}
 
 	if _, err := tx.Exec(`
-CREATE TABLE IF NOT EXISTS counters (
-  key TEXT PRIMARY KEY,
-  value INTEGER NOT NULL
-);
-`); err != nil {
-		return fmt.Errorf("create counters: %w", err)
-	}
-
-	if _, err := tx.Exec(`
-INSERT OR IGNORE INTO counters(key,value) VALUES ('issue_seq',0);
-`); err != nil {
-		return fmt.Errorf("seed counter: %w", err)
-	}
-
-	if _, err := tx.Exec(`
 INSERT OR IGNORE INTO schema_migrations(version) VALUES (?);
 `, currentSchemaVersion); err != nil {
 		return fmt.Errorf("insert schema version: %w", err)
@@ -193,45 +179,40 @@ func Ping(db *sql.DB) error {
 	return db.Ping()
 }
 
-func nextID(db *sql.DB) (string, error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return "", err
+func nextID() (string, error) {
+	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+	buf := make([]byte, 3)
+	for i := 0; i < len(buf); i++ {
+		var b [1]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			return "", err
+		}
+		buf[i] = alphabet[int(b[0])%len(alphabet)]
 	}
-	defer func() { _ = tx.Rollback() }()
-
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO counters(key,value) VALUES ('issue_seq',0)`); err != nil {
-		return "", err
-	}
-	if _, err := tx.Exec(`UPDATE counters SET value = value + 1 WHERE key='issue_seq'`); err != nil {
-		return "", err
-	}
-	row := tx.QueryRow(`SELECT value FROM counters WHERE key='issue_seq'`)
-	var n int
-	if err := row.Scan(&n); err != nil {
-		return "", err
-	}
-	if err := tx.Commit(); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("bd-%d", n), nil
+	return "bd-" + string(buf), nil
 }
 
 func CreateTask(db *sql.DB, in CreateInput) (*Task, error) {
 	if strings.TrimSpace(in.Title) == "" {
 		return nil, errors.New("title is required")
 	}
-	id, err := nextID(db)
-	if err != nil {
-		return nil, err
-	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err = db.Exec(`INSERT INTO tasks(id,title,description,status,priority,issue_type,labels_json,deps_json,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-		id, in.Title, in.Description, "open", in.Priority, in.IssueType, "[]", "[]", "{}", now, now)
-	if err != nil {
+	for attempt := 0; attempt < 32; attempt++ {
+		id, err := nextID()
+		if err != nil {
+			return nil, err
+		}
+		_, err = db.Exec(`INSERT INTO tasks(id,title,description,status,priority,issue_type,labels_json,deps_json,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+			id, in.Title, in.Description, "open", in.Priority, in.IssueType, "[]", "[]", "{}", now, now)
+		if err == nil {
+			return ShowTask(db, id)
+		}
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			continue
+		}
 		return nil, err
 	}
-	return ShowTask(db, id)
+	return nil, errors.New("failed to allocate unique id after retries")
 }
 
 func ShowTask(db *sql.DB, id string) (*Task, error) {

@@ -2,6 +2,7 @@ package store
 
 import (
 	"path/filepath"
+	"regexp"
 	"testing"
 )
 
@@ -59,6 +60,9 @@ func TestLabelsMetadataAndDepsParity(t *testing.T) {
 	created, err := CreateTask(w.DB, CreateInput{Title: "Task A", IssueType: "task", Priority: 1})
 	if err != nil {
 		t.Fatalf("create: %v", err)
+	}
+	if ok, _ := regexp.MatchString(`^bd-[0-9a-z]{3}$`, created.ID); !ok {
+		t.Fatalf("expected beads-style id (bd-xxx), got %s", created.ID)
 	}
 	dep, err := CreateTask(w.DB, CreateInput{Title: "Task B", IssueType: "task", Priority: 2})
 	if err != nil {
