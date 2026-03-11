@@ -116,7 +116,13 @@ assert_json_status "$CLOSE_JSON" "closed"
 SHOW_CLOSED="$(run_target "show $TASK_ID --json")"
 assert_json_status "$SHOW_CLOSED" "closed"
 
-# 9) claim path
+# 9) reopen path
+REOPEN_JSON="$(run_target "reopen $TASK_ID --json")"
+assert_json_status "$REOPEN_JSON" "open"
+SHOW_REOPENED="$(run_target "show $TASK_ID --json")"
+assert_json_status "$SHOW_REOPENED" "open"
+
+# 10) claim path
 THIRD_JSON="$(run_target "create 'Claim me' --type task --priority 2 --json")"
 THIRD_ID="$(json_field "$THIRD_JSON" "id")"
 CLAIM_JSON="$(run_target "update $THIRD_ID --claim --json")"

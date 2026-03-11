@@ -420,3 +420,15 @@ func CloseTask(db *sql.DB, id, reason string) (*Task, error) {
 	}
 	return ShowTask(db, id)
 }
+
+func ReopenTask(db *sql.DB, id string) (*Task, error) {
+	if _, err := ShowTask(db, id); err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := db.Exec(`UPDATE tasks SET status='open',close_reason='',closed_at='',updated_at=? WHERE id=?`, now, id)
+	if err != nil {
+		return nil, err
+	}
+	return ShowTask(db, id)
+}
