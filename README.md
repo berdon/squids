@@ -39,6 +39,12 @@ TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 
 Outputs logs and deltas under `.parity-results/`.
 
+## Docs
+
+- Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`
+- Migration guide: `docs/MIGRATION_FROM_BEADS.md`
+- Release notes: `docs/RELEASE_NOTES.md`
+
 ### Optional target args
 
 If your target needs global args before the command:
