@@ -1,11 +1,24 @@
 # squids
 
-SQLite-backed, beads-compatible task CLI (planned).
+SQLite-backed, beads-compatible task CLI.
 
-Design constraints:
-- Binary name is `sq`
-- No dolt/server mechanics
-- Concurrency supported via single-file SQLite backend (multi-process safe)
+## Why squids exists
+
+`sq` exists to preserve the task workflow ergonomics of beads while removing Dolt/server operational complexity.
+
+Goals:
+- Keep familiar command semantics for day-to-day task operations.
+- Use a local SQLite backend (single file, no daemon lifecycle).
+- Support concurrent local access safely (WAL + busy timeout).
+- Grow compatibility with test-first parity automation.
+
+## Current status
+
+Squids is actively expanding parity coverage against beads via shell automation.
+
+- Binary name: `sq`
+- Backend: SQLite (`.sq/tasks.sqlite` by default)
+- Intentional exclusions: Dolt/server command families
 
 ## Build
 
@@ -14,10 +27,54 @@ make build
 ./bin/sq --help
 ```
 
-## Parity Shell Automation (sq-001)
+## Supported commands (today)
 
-This repo starts with a black-box parity suite that can run against an existing CLI target
-(currently `bd`, later `squids`).
+Core lifecycle:
+- `init`
+- `ready`
+- `create`
+- `show`
+- `list`
+- `update`
+- `close`
+- `reopen`
+- `delete`
+
+Command families and views:
+- `label` (`add`, `remove`, `list`, `list-all`)
+- `dep` (`add`, `remove`, `list`)
+- `comments` (`add`, `list`)
+- `todo` (`add`, `list`, `done`)
+- `children`
+- `blocked`
+- `duplicate`
+- `supersede`
+
+Query/reporting:
+- `query`
+- `search`
+- `count`
+- `status`
+- `types`
+
+## Known gaps vs beads
+
+Squids intentionally does **not** implement:
+- `bd dolt ...` command family
+- Dolt server lifecycle/start-stop operations
+- Dolt-specific history/replication/storage controls
+
+Squids also does not yet claim full parity for the broader beads surface area beyond the commands listed above.
+
+## Next steps
+
+Near-term priorities:
+1. Continue expanding parity coverage command-by-command.
+2. Tighten edge-case compatibility (error messages, filtering behavior, advanced flags).
+3. Add richer integration and stress tests for concurrent mutation scenarios.
+4. Keep docs and compatibility contract synced with parity suite growth.
+
+## Parity shell automation
 
 ### Run against beads
 
@@ -45,12 +102,6 @@ Outputs logs and deltas under `.parity-results/`.
 ./scripts/parity/concurrency-smoke.sh
 ```
 
-## Docs
-
-- Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`
-- Migration guide: `docs/MIGRATION_FROM_BEADS.md`
-- Release notes: `docs/RELEASE_NOTES.md`
-
 ### Optional target args
 
 If your target needs global args before the command:
@@ -59,9 +110,10 @@ If your target needs global args before the command:
 TARGET_ARGS="--json" ./scripts/parity/run-parity.sh
 ```
 
-The harness spins up an isolated temp workspace per run and validates:
-- init + ready
-- create/show/list/update/close lifecycle
-- json contracts
-- label/dependency metadata behavior
-- selected error semantics
+## Documentation
+
+- Getting started: `docs/GETTING_STARTED.md`
+- Migration guide: `docs/MIGRATION_FROM_BEADS.md`
+- Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`
+- SQLite concurrency strategy: `docs/SQLITE_CONCURRENCY.md`
+- Release notes: `docs/RELEASE_NOTES.md`
