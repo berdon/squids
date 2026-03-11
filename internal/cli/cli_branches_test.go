@@ -2,6 +2,7 @@ package cli
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -29,6 +30,15 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 
 	id := firstID(t, mustOK("create", "A", "--json"))
 	id2 := firstID(t, mustOK("create", "B", "--json"))
+
+	mustFail("q")
+	mustFail("q", "x", "--priority", "bad")
+	mustFail("q", "x", "--wat")
+	qraw := mustOK("q", "quickone")
+	if !strings.Contains(qraw, "bd-") {
+		t.Fatalf("expected q output id, got %q", qraw)
+	}
+	mustOK("q", "quickjson", "--json")
 
 	mustFail("create")
 	mustFail("create", "x", "--priority", "nope", "--json")

@@ -45,6 +45,7 @@ func usage() {
 	fmt.Println("  init    Initialize task storage")
 	fmt.Println("  ready   Check backend readiness")
 	fmt.Println("  create  Create a task")
+	fmt.Println("  q       Quick-create a task and output ID")
 	fmt.Println("  show    Show a task")
 	fmt.Println("  list    List tasks")
 	fmt.Println("  update  Update a task")

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -115,6 +116,61 @@ func cmdCreate(args []string) int {
 		return failRuntime(err.Error())
 	}
 	return printJSON(t)
+}
+
+func cmdQ(args []string) int {
+	if len(args) == 0 {
+		return failUsage("title is required")
+	}
+	creator := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+	if creator == "" {
+		creator = strings.TrimSpace(os.Getenv("USER"))
+	}
+	in := store.CreateInput{Title: args[0], IssueType: "task", Priority: 2, Creator: creator}
+	jsonOut := false
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--type":
+			if i+1 < len(args) {
+				in.IssueType = args[i+1]
+				i++
+			}
+		case "--priority":
+			if i+1 < len(args) {
+				p, err := strconv.Atoi(args[i+1])
+				if err != nil {
+					return failUsage("invalid --priority")
+				}
+				in.Priority = p
+				i++
+			}
+		case "--description":
+			if i+1 < len(args) {
+				in.Description = args[i+1]
+				i++
+			}
+		case "--json":
+			jsonOut = true
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	t, err := store.CreateTask(db, in)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	if jsonOut {
+		return printJSON(map[string]any{"id": t.ID})
+	}
+	_, _ = fmt.Fprintln(os.Stdout, t.ID)
+	return 0
 }
 
 func cmdShow(args []string) int {

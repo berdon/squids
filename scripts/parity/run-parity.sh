@@ -94,6 +94,11 @@ CREATE_JSON="$(run_target "create 'Parity lifecycle task' --type task --priority
 TASK_ID="$(json_field "$CREATE_JSON" "id")"
 assert_contains "$TASK_ID" "bd-"
 
+# 2a) quick capture command parity
+Q_ID_RAW="$(run_target "q QuickCapture --type task --priority 2")"
+Q_ID="$(echo "$Q_ID_RAW" | tr -d '\r\n')"
+assert_contains "$Q_ID" "bd-"
+
 # 3) show
 SHOW_JSON="$(run_target "show $TASK_ID --json")"
 assert_eq "$(json_field "$SHOW_JSON" "id")" "$TASK_ID"

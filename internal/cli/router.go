@@ -23,6 +23,8 @@ func Run(args []string) int {
 		return cmdReady()
 	case "create":
 		return cmdCreate(args[1:])
+	case "q":
+		return cmdQ(args[1:])
 	case "show":
 		return cmdShow(args[1:])
 	case "list":
