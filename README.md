@@ -50,23 +50,30 @@ On release tags, CI publishes platform binaries in GitHub Releases (`.github/wor
 
 ```bash
 sq init --json
+```
+
+2. **Check ready work (open + unblocked)**
+
+```bash
 sq ready --json
 ```
 
-2. **Create your first task**
+`ready` returns the current set of actionable tasks: status `open` and not dependency-blocked.
+
+3. **Create your first task**
 
 ```bash
 sq create "Ship migration docs" --type task --priority 1 --description "Document sq rollout" --json
 ```
 
-3. **List and inspect tasks**
+4. **List and inspect tasks**
 
 ```bash
 sq list --json --flat --no-pager
 sq show <id> --json
 ```
 
-4. **Work the task**
+5. **Work the task**
 
 ```bash
 sq update <id> --status in_progress --assignee guppy --json
@@ -175,12 +182,17 @@ Core lifecycle:
 - `init`
 - `ready`
 - `create`
+- `q`
 - `show`
 - `list`
 - `update`
 - `close`
 - `reopen`
 - `delete`
+- `defer`
+- `undefer`
+- `rename`
+- `rename-prefix`
 
 Command families and views:
 - `label` (`add`, `remove`, `list`, `list-all`)
@@ -194,6 +206,8 @@ Command families and views:
 
 Query/reporting:
 - `query`
+- `stale`
+- `orphans`
 - `search`
 - `count`
 - `status`
@@ -249,6 +263,7 @@ TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 ## Documentation
 
 - Getting started: `docs/GETTING_STARTED.md`
+- CLI reference: `docs/CLI_REFERENCE.md`
 - Migration guide: `docs/MIGRATION_FROM_BEADS.md`
 - Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`
 - SQLite concurrency strategy: `docs/SQLITE_CONCURRENCY.md`

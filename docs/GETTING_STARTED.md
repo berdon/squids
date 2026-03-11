@@ -1,16 +1,8 @@
 # Getting Started with squids (`sq`)
 
-## Why squids exists
+This guide gets you from zero to an active workflow in a few minutes.
 
-`sq` exists to keep the **beads task workflow** people already use, while removing the Dolt/server operational overhead.
-
-In short:
-- Same task-centric CLI ergonomics.
-- Local single-file SQLite backend.
-- No server lifecycle management.
-- Concurrency-safe for multi-process local use.
-
-## Install / build
+## 1) Build and verify
 
 From repo root:
 
@@ -19,27 +11,39 @@ make build
 ./bin/sq --help
 ```
 
-## Initialize a workspace
+## 2) Initialize a workspace
 
 By default, squids stores data at `./.sq/tasks.sqlite` in your current repo/folder.
 
 ```bash
 ./bin/sq init --json
+```
+
+## 3) Understand and use `ready`
+
+`ready` is your “what can I work on now?” view.
+
+It returns tasks that are:
+- status `open`
+- not dependency-blocked
+
+```bash
 ./bin/sq ready --json
 ```
 
-## Basic workflow
+Tip: start each work session with `sq ready --json`.
 
-Create + move a task through a normal lifecycle:
+## 4) Basic task lifecycle
 
 ```bash
 ./bin/sq create "Ship migration docs" --type task --priority 1 --description "Document sq rollout" --json
 ./bin/sq list --json --flat --no-pager
+./bin/sq show <id> --json
 ./bin/sq update <id> --status in_progress --assignee guppy --json
 ./bin/sq close <id> --reason "Done" --json
 ```
 
-## Useful command families
+## 5) Common command families
 
 ```bash
 # labels
@@ -47,20 +51,38 @@ Create + move a task through a normal lifecycle:
 ./bin/sq label list <id> --json
 
 # dependencies
-./bin/sq dep add <id> <depends-on-id> --json
-./bin/sq dep list <id> --json
+./bin/sq dep add <issue-id> <depends-on-id> --json
+./bin/sq dep list <issue-id> --json
 
 # comments
-./bin/sq comments add <id> "needs review" --json
-./bin/sq comments <id> --json
+./bin/sq comments add <issue-id> "needs review" --json
+./bin/sq comments <issue-id> --json
 
-# convenience
+# todo convenience
 ./bin/sq todo add "Follow up" --json
 ./bin/sq todo --json
-./bin/sq todo done <id> --json
+./bin/sq todo done <id> --reason "Completed" --json
 ```
 
-## Compatibility checks
+## 6) Reports and triage views
+
+```bash
+./bin/sq blocked --json
+./bin/sq stale --days 30 --json
+./bin/sq orphans --json
+./bin/sq query "status=open AND priority<=2" --json
+./bin/sq status --json
+```
+
+## 7) Environment
+
+Override DB location when needed:
+
+```bash
+SQ_DB_PATH=/path/to/tasks.sqlite ./bin/sq list --json
+```
+
+## 8) Compatibility checks
 
 Run parity against sq only:
 
@@ -80,11 +102,8 @@ Run SQLite concurrency smoke:
 ./scripts/parity/concurrency-smoke.sh
 ```
 
-## Environment
-
-- `SQ_DB_PATH=/path/to/tasks.sqlite` to override DB location.
-
 ## Next docs
 
+- Full CLI reference: `docs/CLI_REFERENCE.md`
 - Migration: `docs/MIGRATION_FROM_BEADS.md`
 - Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`
