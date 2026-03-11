@@ -134,6 +134,12 @@ if [[ "$DEP_LIST_AFTER_REMOVE" == *"$SECOND_ID"* ]]; then
   exit 1
 fi
 
+# 6c) comments command family parity (add + list)
+COMMENT_ADD_JSON="$(run_target "comments add $TASK_ID 'hello comment' --json")"
+assert_contains "$COMMENT_ADD_JSON" "hello comment"
+COMMENT_LIST_JSON="$(run_target "comments $TASK_ID --json")"
+assert_contains "$COMMENT_LIST_JSON" "hello comment"
+
 # 7) assignee clear path (empty assignee should be accepted)
 CLEAR_JSON="$(run_target "update $TASK_ID --assignee '' --status open --json")"
 assert_json_status "$CLEAR_JSON" "open"

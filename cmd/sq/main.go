@@ -50,6 +50,7 @@ func usage() {
 	fmt.Println("  delete  Delete a task")
 	fmt.Println("  label   Manage labels")
 	fmt.Println("  dep     Manage dependencies")
+	fmt.Println("  comments Manage comments")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
@@ -413,6 +414,38 @@ func cmdDep(args []string) int {
 	}
 }
 
+func cmdComments(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq comments <issue-id> [--json] OR sq comments add <issue-id> <text> [--json]")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	if args[0] == "add" {
+		if len(args) < 3 {
+			return failUsage("usage: sq comments add <issue-id> <text> [--json]")
+		}
+		issueID := args[1]
+		body := args[2]
+		author := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+		c, err := store.AddComment(db, issueID, author, body)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(c)
+	}
+
+	issueID := args[0]
+	comments, err := store.ListComments(db, issueID)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(comments)
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -445,6 +478,8 @@ func main() {
 		os.Exit(cmdLabel(os.Args[2:]))
 	case "dep":
 		os.Exit(cmdDep(os.Args[2:]))
+	case "comments":
+		os.Exit(cmdComments(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		usage()

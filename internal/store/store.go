@@ -152,6 +152,18 @@ CREATE TABLE IF NOT EXISTS dependencies (
 	}
 
 	if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  issue_id TEXT NOT NULL,
+  author TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`); err != nil {
+		return fmt.Errorf("create comments: %w", err)
+	}
+
+	if _, err := tx.Exec(`
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -578,6 +590,50 @@ func ListDependencies(db *sql.DB, issueID string) ([]string, error) {
 			return nil, err
 		}
 		out = append(out, d)
+	}
+	return out, nil
+}
+
+type Comment struct {
+	ID        int    `json:"id"`
+	IssueID   string `json:"issue_id"`
+	Author    string `json:"author,omitempty"`
+	Body      string `json:"body"`
+	CreatedAt string `json:"created_at"`
+}
+
+func AddComment(db *sql.DB, issueID, author, body string) (*Comment, error) {
+	if _, err := ShowTask(db, issueID); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(body) == "" {
+		return nil, errors.New("comment body is required")
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := db.Exec(`INSERT INTO comments(issue_id,author,body,created_at) VALUES(?,?,?,?)`, issueID, author, body, now)
+	if err != nil {
+		return nil, err
+	}
+	id64, _ := res.LastInsertId()
+	return &Comment{ID: int(id64), IssueID: issueID, Author: author, Body: body, CreatedAt: now}, nil
+}
+
+func ListComments(db *sql.DB, issueID string) ([]Comment, error) {
+	if _, err := ShowTask(db, issueID); err != nil {
+		return nil, err
+	}
+	rows, err := db.Query(`SELECT id,issue_id,author,body,created_at FROM comments WHERE issue_id=? ORDER BY id ASC`, issueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Comment, 0)
+	for rows.Next() {
+		var c Comment
+		if err := rows.Scan(&c.ID, &c.IssueID, &c.Author, &c.Body, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
 	}
 	return out, nil
 }
