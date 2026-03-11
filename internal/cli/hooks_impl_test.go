@@ -295,3 +295,51 @@ func TestUninstallHooks_RemovesManagedFromSharedDir(t *testing.T) {
 		t.Fatalf("expected shared pre-commit removed, got err=%v", err)
 	}
 }
+
+func TestListHookStatuses_Shared(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if err := installHooks(false, true, false); err != nil {
+		t.Fatal(err)
+	}
+	statuses, err := listHookStatuses(true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(statuses) != len(managedHookNames) {
+		t.Fatalf("expected %d statuses, got %d", len(managedHookNames), len(statuses))
+	}
+	for _, s := range statuses {
+		if !s.Installed {
+			t.Fatalf("expected installed status for %s", s.Name)
+		}
+		if !s.IsShim || s.Version == "" {
+			t.Fatalf("expected shim+version for %s", s.Name)
+		}
+	}
+}
+
+func TestListHookStatuses_DefaultOutsideGit(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	statuses, err := listHookStatuses(false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(statuses) != len(managedHookNames) {
+		t.Fatalf("expected %d statuses, got %d", len(managedHookNames), len(statuses))
+	}
+	for _, s := range statuses {
+		if s.Installed {
+			t.Fatalf("expected missing status outside git for %s", s.Name)
+		}
+	}
+}

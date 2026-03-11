@@ -604,7 +604,11 @@ func cmdHooks(args []string) int {
 	status := map[string]any{"success": true, "subcommand": sub}
 	switch sub {
 	case "list":
-		status["hooks"] = []map[string]any{{"name": "pre-commit", "installed": false}, {"name": "post-merge", "installed": false}, {"name": "pre-push", "installed": false}, {"name": "post-checkout", "installed": false}, {"name": "prepare-commit-msg", "installed": false}}
+		hooks, err := listHookStatuses(shared, beadsHooks)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		status["hooks"] = hooks
 	case "install":
 		if err := installHooks(force, shared, beadsHooks); err != nil {
 			return failRuntime(err.Error())

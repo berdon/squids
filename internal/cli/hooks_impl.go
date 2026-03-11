@@ -10,6 +10,14 @@ import (
 
 var managedHookNames = []string{"pre-commit", "post-merge", "pre-push", "post-checkout", "prepare-commit-msg"}
 
+type HookStatus struct {
+	Name      string `json:"name"`
+	Installed bool   `json:"installed"`
+	Version   string `json:"version,omitempty"`
+	IsShim    bool   `json:"is_shim,omitempty"`
+	Outdated  bool   `json:"outdated,omitempty"`
+}
+
 const hookSectionBeginPrefix = "# --- BEGIN SQ INTEGRATION"
 const hookSectionEndPrefix = "# --- END SQ INTEGRATION"
 
@@ -175,4 +183,38 @@ func uninstallHooksAt(hooksDir string) error {
 		}
 	}
 	return nil
+}
+
+func listHookStatuses(shared, beadsHooks bool) ([]HookStatus, error) {
+	hooksDir, err := resolveHooksDir(shared, beadsHooks)
+	if err != nil {
+		if shared || beadsHooks {
+			return nil, err
+		}
+		// default mode outside git: report missing hooks
+		out := make([]HookStatus, 0, len(managedHookNames))
+		for _, h := range managedHookNames {
+			out = append(out, HookStatus{Name: h, Installed: false})
+		}
+		return out, nil
+	}
+	out := make([]HookStatus, 0, len(managedHookNames))
+	for _, h := range managedHookNames {
+		hs := HookStatus{Name: h}
+		b, err := os.ReadFile(filepath.Join(hooksDir, h))
+		if err != nil {
+			if os.IsNotExist(err) {
+				out = append(out, hs)
+				continue
+			}
+			return nil, err
+		}
+		hs.Installed = strings.Contains(string(b), hookSectionBeginPrefix) && strings.Contains(string(b), hookSectionEndPrefix)
+		if hs.Installed {
+			hs.Version = Version
+			hs.IsShim = true
+		}
+		out = append(out, hs)
+	}
+	return out, nil
 }
