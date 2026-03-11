@@ -365,6 +365,11 @@ if [[ -f .beads-hooks/pre-commit ]]; then
   exit 1
 fi
 run_target "hooks run pre-commit --json" >/dev/null
+MSG_FILE="./COMMIT_MSG"
+echo "feat: parity" > "$MSG_FILE"
+GT_ROLE="beads/crew/parity" run_target "hooks run prepare-commit-msg $MSG_FILE message --json" >/dev/null
+assert_contains "$(cat "$MSG_FILE")" "Executed-By: beads/crew/parity"
+rm -f "$MSG_FILE"
 
 # 15) negative path: missing issue show should fail
 set +e

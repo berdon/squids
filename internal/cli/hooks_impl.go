@@ -278,5 +278,36 @@ func runPostMergeHook(args []string) int    { return runChainedHook("post-merge"
 func runPrePushHook(args []string) int      { return runChainedHook("pre-push", args) }
 func runPostCheckoutHook(args []string) int { return runChainedHook("post-checkout", args) }
 func runPrepareCommitMsgHook(args []string) int {
-	return runChainedHook("prepare-commit-msg", args)
+	if code := runChainedHook("prepare-commit-msg", args); code != 0 {
+		return code
+	}
+	if len(args) < 1 {
+		return 0
+	}
+	msgFile := args[0]
+	source := ""
+	if len(args) >= 2 {
+		source = args[1]
+	}
+	if source == "merge" {
+		return 0
+	}
+	identity := os.Getenv("GT_ROLE")
+	if strings.TrimSpace(identity) == "" {
+		return 0
+	}
+	b, err := os.ReadFile(msgFile)
+	if err != nil {
+		return 0
+	}
+	content := string(b)
+	if strings.Contains(content, "Executed-By:") {
+		return 0
+	}
+	trailer := "Executed-By: " + identity
+	msg := strings.TrimRight(content, "\n\r\t ") + "\n\n" + trailer + "\n"
+	if err := os.WriteFile(msgFile, []byte(msg), 0o600); err != nil {
+		return 0
+	}
+	return 0
 }

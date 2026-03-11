@@ -456,6 +456,63 @@ func TestRunHookDispatcher_Known(t *testing.T) {
 	}
 }
 
+func TestRunPrepareCommitMsgHook_AppendsTrailer(t *testing.T) {
+	wd := t.TempDir()
+	msg := filepath.Join(wd, "MSG")
+	if err := os.WriteFile(msg, []byte("feat: test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GT_ROLE", "beads/crew/dave")
+	if code := runPrepareCommitMsgHook([]string{msg, "message"}); code != 0 {
+		t.Fatalf("expected 0, got %d", code)
+	}
+	b, err := os.ReadFile(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "Executed-By: beads/crew/dave") {
+		t.Fatalf("missing trailer: %q", string(b))
+	}
+}
+
+func TestRunPrepareCommitMsgHook_SkipsMerge(t *testing.T) {
+	wd := t.TempDir()
+	msg := filepath.Join(wd, "MSG")
+	if err := os.WriteFile(msg, []byte("feat: test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GT_ROLE", "beads/crew/dave")
+	if code := runPrepareCommitMsgHook([]string{msg, "merge"}); code != 0 {
+		t.Fatalf("expected 0, got %d", code)
+	}
+	b, err := os.ReadFile(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "Executed-By:") {
+		t.Fatalf("expected no trailer on merge: %q", string(b))
+	}
+}
+
+func TestRunPrepareCommitMsgHook_Dedupe(t *testing.T) {
+	wd := t.TempDir()
+	msg := filepath.Join(wd, "MSG")
+	if err := os.WriteFile(msg, []byte("feat: test\n\nExecuted-By: existing\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GT_ROLE", "beads/crew/dave")
+	if code := runPrepareCommitMsgHook([]string{msg, "message"}); code != 0 {
+		t.Fatalf("expected 0, got %d", code)
+	}
+	b, err := os.ReadFile(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(b), "Executed-By:") != 1 {
+		t.Fatalf("expected single trailer: %q", string(b))
+	}
+}
+
 func TestRunHookDispatcher_KnownHooks(t *testing.T) {
 	for _, h := range managedHookNames {
 		if code := runHookDispatcher(h, []string{"arg1"}); code != 0 {
