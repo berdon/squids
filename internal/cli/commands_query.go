@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -242,6 +243,48 @@ func cmdVersion(args []string) int {
 		return printJSON(map[string]any{"version": Version})
 	}
 	_, err := fmt.Fprintf(os.Stdout, "sq version %s\n", Version)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return 0
+}
+
+func cmdWhere(args []string) int {
+	jsonOut := false
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Show active sq storage location")
+			return 0
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+
+	dbPath, err := dbPathFromEnvOrCwd()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	res := map[string]any{
+		"path":          filepath.Dir(dbPath),
+		"prefix":        "bd",
+		"database_path": dbPath,
+	}
+	if jsonOut {
+		return printJSON(res)
+	}
+	_, err = fmt.Fprintf(os.Stdout, "%s\n  prefix: %s\n  database: %s\n", res["path"], res["prefix"], res["database_path"])
 	if err != nil {
 		return failRuntime(err.Error())
 	}

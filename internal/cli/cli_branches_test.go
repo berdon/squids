@@ -181,4 +181,10 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("version", "--dolt-auto-commit", "off")
 	mustOK("-V")
 	mustOK("--version")
+
+	mustFail("where", "--wat")
+	mustOK("where")
+	mustOK("where", "--json")
+	mustOK("where", "--help")
+	mustOK("where", "--actor", "tester")
 }

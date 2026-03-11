@@ -81,6 +81,8 @@ func Run(args []string) int {
 		return cmdStatus()
 	case "version":
 		return cmdVersion(args[1:])
+	case "where":
+		return cmdWhere(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()

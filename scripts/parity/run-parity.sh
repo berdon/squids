@@ -310,6 +310,13 @@ run_target "version --dolt-auto-commit off" >/dev/null
 run_target "-V" >/dev/null
 run_target "--version" >/dev/null
 
+# 14c) where parity
+WHERE_TXT="$(run_target "where")"
+assert_contains "$WHERE_TXT" ".sq"
+WHERE_JSON="$(run_target "where --json")"
+assert_contains "$WHERE_JSON" "database_path"
+run_target "where --actor tester" >/dev/null
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
