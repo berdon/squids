@@ -223,6 +223,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("history", id, "--help")
 	mustFail("history", id, "--json")
 	mustFail("history", id, "--limit", "5", "--json")
+	mustFail("history", id, "--actor", "tester", "--db", "/tmp/sq.db", "--dolt-auto-commit", "off", "--json")
 
 	mustOK("hooks")
 	mustOK("hooks", "list")

@@ -611,6 +611,9 @@ func cmdHooks(args []string) int {
 		}
 		status["message"] = "hooks install complete"
 	case "uninstall":
+		if err := uninstallHooks(); err != nil {
+			return failRuntime(err.Error())
+		}
 		status["message"] = "hooks uninstall complete"
 	case "run":
 		if len(args) < 2 {

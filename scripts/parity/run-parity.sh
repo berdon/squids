@@ -355,7 +355,15 @@ assert_contains "$HISTORY_OUT" "requires Dolt backend"
 HOOKS_LIST_JSON="$(run_target "hooks list --json")"
 assert_contains "$HOOKS_LIST_JSON" "hooks"
 run_target "hooks install --shared --json" >/dev/null
+if [[ ! -f .beads-hooks/pre-commit ]]; then
+  echo "ASSERT FAILED: expected shared hook file after install"
+  exit 1
+fi
 run_target "hooks uninstall --json" >/dev/null
+if [[ -f .beads-hooks/pre-commit ]]; then
+  echo "ASSERT FAILED: expected shared hook file removed after uninstall"
+  exit 1
+fi
 run_target "hooks run pre-commit --json" >/dev/null
 
 # 15) negative path: missing issue show should fail
