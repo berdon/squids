@@ -343,6 +343,31 @@ func TestListHookStatuses_DefaultOutsideGit(t *testing.T) {
 	}
 }
 
+func TestSetAndResetCoreHooksPath(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v (%s)", err, string(out))
+	}
+	if err := setCoreHooksPath(".beads-hooks"); err != nil {
+		t.Fatalf("setCoreHooksPath failed: %v", err)
+	}
+	out, err := exec.Command("git", "config", "--get", "core.hooksPath").Output()
+	if err != nil || strings.TrimSpace(string(out)) != ".beads-hooks" {
+		t.Fatalf("unexpected core.hooksPath after set: %q err=%v", strings.TrimSpace(string(out)), err)
+	}
+	if err := resetCoreHooksPathIfManaged(); err != nil {
+		t.Fatalf("resetCoreHooksPathIfManaged failed: %v", err)
+	}
+	if out, err := exec.Command("git", "config", "--get", "core.hooksPath").Output(); err == nil && strings.TrimSpace(string(out)) != "" {
+		t.Fatalf("expected hooksPath unset, got %q", strings.TrimSpace(string(out)))
+	}
+}
+
 func TestRunChainedHook_NoopWhenNoGit(t *testing.T) {
 	wd := t.TempDir()
 	old, _ := os.Getwd()

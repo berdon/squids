@@ -114,8 +114,15 @@ func installHooks(force, shared, beadsHooks bool) error {
 			return err
 		}
 	}
-	_ = shared
-	_ = beadsHooks
+	if shared {
+		if err := setCoreHooksPath(".beads-hooks"); err != nil {
+			return err
+		}
+	} else if beadsHooks {
+		if err := setCoreHooksPath(".sq/hooks"); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -154,6 +161,7 @@ func uninstallHooks() error {
 	if hooksDir, err := resolveHooksDir(false, true); err == nil {
 		_ = uninstallHooksAt(hooksDir)
 	}
+	_ = resetCoreHooksPathIfManaged()
 	return nil
 }
 
@@ -181,6 +189,31 @@ func uninstallHooksAt(hooksDir string) error {
 		if err := os.WriteFile(hookPath, []byte(cleaned), 0o755); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func setCoreHooksPath(path string) error {
+	check := exec.Command("git", "rev-parse", "--is-inside-work-tree")
+	if err := check.Run(); err != nil {
+		return nil
+	}
+	cmd := exec.Command("git", "config", "core.hooksPath", path)
+	return cmd.Run()
+}
+
+func resetCoreHooksPathIfManaged() error {
+	check := exec.Command("git", "rev-parse", "--is-inside-work-tree")
+	if err := check.Run(); err != nil {
+		return nil
+	}
+	out, err := exec.Command("git", "config", "--get", "core.hooksPath").Output()
+	if err != nil {
+		return nil
+	}
+	v := strings.TrimSpace(string(out))
+	if v == ".beads-hooks" || v == ".sq/hooks" {
+		return exec.Command("git", "config", "--unset", "core.hooksPath").Run()
 	}
 	return nil
 }

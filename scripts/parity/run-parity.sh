@@ -359,6 +359,7 @@ if [[ ! -f .beads-hooks/pre-commit ]]; then
   echo "ASSERT FAILED: expected shared hook file after install"
   exit 1
 fi
+# In parity temp workspace there may be no git repo; core.hooksPath checks are covered in unit tests.
 run_target "hooks uninstall --json" >/dev/null
 if [[ -f .beads-hooks/pre-commit ]]; then
   echo "ASSERT FAILED: expected shared hook file removed after uninstall"
