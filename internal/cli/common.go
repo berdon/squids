@@ -58,6 +58,8 @@ func usage() {
 	fmt.Println("  todo    Manage TODO items")
 	fmt.Println("  children List child tasks for a parent")
 	fmt.Println("  blocked Show blocked tasks")
+	fmt.Println("  defer   Defer one or more tasks")
+	fmt.Println("  undefer Restore deferred tasks to open")
 	fmt.Println("  duplicate Mark issue as duplicate of canonical issue")
 	fmt.Println("  supersede Mark issue as superseded by replacement")
 	fmt.Println("  types   List supported issue types")

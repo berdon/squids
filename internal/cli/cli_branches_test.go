@@ -105,6 +105,15 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("blocked", "--wat")
 	mustOK("blocked", "--parent", id, "--json")
 
+	mustFail("defer")
+	mustFail("defer", "--json")
+	mustFail("defer", id, "--wat")
+	mustOK("defer", id, "--json")
+	mustFail("undefer")
+	mustFail("undefer", "--json")
+	mustFail("undefer", id, "--wat")
+	mustOK("undefer", id, "--json")
+
 	mustFail("duplicate")
 	mustFail("duplicate", id, "--wat")
 	mustFail("duplicate", id, "--json")

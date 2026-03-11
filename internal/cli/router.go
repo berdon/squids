@@ -49,6 +49,10 @@ func Run(args []string) int {
 		return cmdChildren(args[1:])
 	case "blocked":
 		return cmdBlocked(args[1:])
+	case "defer":
+		return cmdDefer(args[1:])
+	case "undefer":
+		return cmdUndefer(args[1:])
 	case "duplicate":
 		return cmdDuplicate(args[1:])
 	case "supersede":

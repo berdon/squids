@@ -173,7 +173,13 @@ assert_contains "$COMMENT_ADD_JSON" "hello comment"
 COMMENT_LIST_JSON="$(run_target "comments $TASK_ID --json")"
 assert_contains "$COMMENT_LIST_JSON" "hello comment"
 
-# 6e) duplicate/supersede parity
+# 6e) defer/undefer parity
+DEFER_JSON="$(run_target "defer $TASK_ID --json")"
+assert_contains "$DEFER_JSON" "deferred"
+UNDEFER_JSON="$(run_target "undefer $TASK_ID --json")"
+assert_contains "$UNDEFER_JSON" "open"
+
+# 6f) duplicate/supersede parity
 ORIG_JSON="$(run_target "create 'Original issue' --type bug --priority 1 --json")"
 ORIG_ID="$(json_field "$ORIG_JSON" "id")"
 DUP_JSON="$(run_target "create 'Duplicate issue' --type bug --priority 2 --json")"

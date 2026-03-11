@@ -275,6 +275,74 @@ func cmdBlocked(args []string) int {
 	return printJSON(items)
 }
 
+func cmdDefer(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq defer <id> [<id>...] [--json]")
+	}
+	ids := make([]string, 0)
+	for _, a := range args {
+		if a == "--json" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+		ids = append(ids, a)
+	}
+	if len(ids) == 0 {
+		return failUsage("at least one id is required")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	out := make([]*store.Task, 0, len(ids))
+	for _, id := range ids {
+		status := "deferred"
+		t, err := store.UpdateTask(db, id, store.UpdateInput{Status: &status})
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		out = append(out, t)
+	}
+	return printJSON(out)
+}
+
+func cmdUndefer(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq undefer <id> [<id>...] [--json]")
+	}
+	ids := make([]string, 0)
+	for _, a := range args {
+		if a == "--json" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+		ids = append(ids, a)
+	}
+	if len(ids) == 0 {
+		return failUsage("at least one id is required")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	out := make([]*store.Task, 0, len(ids))
+	for _, id := range ids {
+		status := "open"
+		t, err := store.UpdateTask(db, id, store.UpdateInput{Status: &status})
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		out = append(out, t)
+	}
+	return printJSON(out)
+}
+
 func cmdDuplicate(args []string) int {
 	if len(args) == 0 {
 		return failUsage("usage: sq duplicate <id> --of <canonical-id> [--json]")
