@@ -5,6 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TARGET_BIN="${TARGET_BIN:-bd}"
 TARGET_ARGS="${TARGET_ARGS:-}"
 
+if [[ "$TARGET_BIN" == */* ]]; then
+  TARGET_BIN="$(cd "$ROOT_DIR" && realpath "$TARGET_BIN")"
+fi
+
 TMP_DIR="$(mktemp -d -t squids-parity-XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 

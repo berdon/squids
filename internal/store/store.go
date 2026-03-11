@@ -2,15 +2,52 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 const currentSchemaVersion = 1
+
+type Task struct {
+	ID          string            `json:"id"`
+	Title       string            `json:"title"`
+	Description string            `json:"description,omitempty"`
+	Status      string            `json:"status"`
+	Priority    int               `json:"priority,omitempty"`
+	IssueType   string            `json:"issue_type,omitempty"`
+	Assignee    string            `json:"assignee,omitempty"`
+	Owner       string            `json:"owner,omitempty"`
+	Labels      []string          `json:"labels,omitempty"`
+	Deps        []string          `json:"deps,omitempty"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
+	CloseReason string            `json:"close_reason,omitempty"`
+	CreatedAt   string            `json:"created_at,omitempty"`
+	UpdatedAt   string            `json:"updated_at,omitempty"`
+	ClosedAt    string            `json:"closed_at,omitempty"`
+}
+
+type CreateInput struct {
+	Title       string
+	Description string
+	IssueType   string
+	Priority    int
+}
+
+type UpdateInput struct {
+	Status      *string
+	Assignee    *string
+	AddLabels   []string
+	SetMetadata map[string]string
+	Claim       bool
+}
 
 // Open opens a SQLite database handle with WAL + busy timeout configured.
 func Open(dbPath string) (*sql.DB, error) {
@@ -123,4 +160,136 @@ func Ping(db *sql.DB) error {
 		return errors.New("db is nil")
 	}
 	return db.Ping()
+}
+
+func nextID(db *sql.DB) (string, error) {
+	rows, err := db.Query(`SELECT id FROM tasks WHERE id LIKE 'bd-%'`)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	max := 0
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return "", err
+		}
+		n, err := strconv.Atoi(strings.TrimPrefix(id, "bd-"))
+		if err == nil && n > max {
+			max = n
+		}
+	}
+	return fmt.Sprintf("bd-%d", max+1), nil
+}
+
+func CreateTask(db *sql.DB, in CreateInput) (*Task, error) {
+	if strings.TrimSpace(in.Title) == "" {
+		return nil, errors.New("title is required")
+	}
+	id, err := nextID(db)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = db.Exec(`INSERT INTO tasks(id,title,description,status,priority,issue_type,labels_json,deps_json,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+		id, in.Title, in.Description, "open", in.Priority, in.IssueType, "[]", "[]", "{}", now, now)
+	if err != nil {
+		return nil, err
+	}
+	return ShowTask(db, id)
+}
+
+func ShowTask(db *sql.DB, id string) (*Task, error) {
+	row := db.QueryRow(`SELECT id,title,description,status,priority,issue_type,assignee,owner,labels_json,deps_json,metadata_json,close_reason,created_at,updated_at,closed_at FROM tasks WHERE id=?`, id)
+	var t Task
+	var labels, deps, metadata string
+	if err := row.Scan(&t.ID, &t.Title, &t.Description, &t.Status, &t.Priority, &t.IssueType, &t.Assignee, &t.Owner, &labels, &deps, &metadata, &t.CloseReason, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("issue not found: %s", id)
+		}
+		return nil, err
+	}
+	_ = json.Unmarshal([]byte(labels), &t.Labels)
+	_ = json.Unmarshal([]byte(deps), &t.Deps)
+	t.Metadata = map[string]string{}
+	_ = json.Unmarshal([]byte(metadata), &t.Metadata)
+	return &t, nil
+}
+
+func ListTasks(db *sql.DB) ([]Task, error) {
+	rows, err := db.Query(`SELECT id,title,description,status,priority,issue_type,assignee,owner,labels_json,deps_json,metadata_json,close_reason,created_at,updated_at,closed_at FROM tasks ORDER BY created_at ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Task, 0)
+	for rows.Next() {
+		var t Task
+		var labels, deps, metadata string
+		if err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.Status, &t.Priority, &t.IssueType, &t.Assignee, &t.Owner, &labels, &deps, &metadata, &t.CloseReason, &t.CreatedAt, &t.UpdatedAt, &t.ClosedAt); err != nil {
+			return nil, err
+		}
+		_ = json.Unmarshal([]byte(labels), &t.Labels)
+		_ = json.Unmarshal([]byte(deps), &t.Deps)
+		t.Metadata = map[string]string{}
+		_ = json.Unmarshal([]byte(metadata), &t.Metadata)
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+func UpdateTask(db *sql.DB, id string, in UpdateInput) (*Task, error) {
+	t, err := ShowTask(db, id)
+	if err != nil {
+		return nil, err
+	}
+	if in.Status != nil {
+		t.Status = *in.Status
+	}
+	if in.Assignee != nil {
+		t.Assignee = *in.Assignee
+	}
+	if in.Claim {
+		t.Status = "in_progress"
+	}
+	if len(in.AddLabels) > 0 {
+		existing := map[string]bool{}
+		for _, l := range t.Labels {
+			existing[l] = true
+		}
+		for _, l := range in.AddLabels {
+			if l != "" && !existing[l] {
+				t.Labels = append(t.Labels, l)
+				existing[l] = true
+			}
+		}
+	}
+	if t.Metadata == nil {
+		t.Metadata = map[string]string{}
+	}
+	for k, v := range in.SetMetadata {
+		if strings.TrimSpace(k) != "" {
+			t.Metadata[k] = v
+		}
+	}
+	labelsRaw, _ := json.Marshal(t.Labels)
+	metaRaw, _ := json.Marshal(t.Metadata)
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = db.Exec(`UPDATE tasks SET status=?,assignee=?,labels_json=?,metadata_json=?,updated_at=? WHERE id=?`, t.Status, t.Assignee, string(labelsRaw), string(metaRaw), now, id)
+	if err != nil {
+		return nil, err
+	}
+	return ShowTask(db, id)
+}
+
+func CloseTask(db *sql.DB, id, reason string) (*Task, error) {
+	if _, err := ShowTask(db, id); err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := db.Exec(`UPDATE tasks SET status='closed',close_reason=?,closed_at=?,updated_at=? WHERE id=?`, reason, now, now, id)
+	if err != nil {
+		return nil, err
+	}
+	return ShowTask(db, id)
 }
