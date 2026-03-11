@@ -20,6 +20,13 @@ jobs:
       - name: Go test
         run: go test ./...
 
+      - name: Coverage gate (>= 90%)
+        run: |
+          go test ./... -coverpkg=./... -coverprofile=coverage.out
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')
+          echo "Total coverage: ${total}%"
+          awk -v c="$total" 'BEGIN { if (c+0 < 90.0) { printf("Coverage gate failed: %.1f%% < 90.0%%\n", c); exit 1 } }'
+
       - name: Build sq
         run: make build
 

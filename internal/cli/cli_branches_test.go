@@ -1,0 +1,124 @@
+package cli
+
+import (
+	"path/filepath"
+	"testing"
+)
+
+func TestCLI_CommandBranchCoverage(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+
+	mustOK := func(args ...string) string {
+		t.Helper()
+		code, out, err := runCLI(t, db, args...)
+		if code != 0 {
+			t.Fatalf("expected ok for %v code=%d err=%q", args, code, err)
+		}
+		return out
+	}
+	mustFail := func(args ...string) {
+		t.Helper()
+		code, _, _ := runCLI(t, db, args...)
+		if code == 0 {
+			t.Fatalf("expected failure for %v", args)
+		}
+	}
+
+	mustOK("init", "--json")
+	mustOK("ready", "--json")
+
+	id := firstID(t, mustOK("create", "A", "--json"))
+	id2 := firstID(t, mustOK("create", "B", "--json"))
+
+	mustFail("create")
+	mustFail("create", "x", "--priority", "nope", "--json")
+	mustFail("create", "x", "--wat")
+
+	mustFail("show")
+	mustFail("show", "missing", "--wat")
+
+	mustFail("list", "--wat")
+
+	mustFail("update")
+	mustFail("update", id, "--set-metadata", "bad", "--json")
+	mustFail("update", id, "--wat")
+	mustOK("update", id, "--json")
+
+	mustFail("close")
+	mustFail("close", id, "--wat")
+	mustOK("close", id, "--json")
+
+	mustFail("reopen")
+	mustFail("reopen", id, "--wat")
+	mustOK("reopen", id, "--json")
+
+	mustFail("delete")
+	mustFail("delete", id2, "--wat")
+
+	mustFail("label")
+	mustFail("label", "add", id)
+	mustFail("label", "list")
+	mustFail("label", "remove", id)
+	mustFail("label", "wat")
+	mustOK("label", "add", id, "x", "--json")
+	mustOK("label", "list", id, "--json")
+	mustOK("label", "remove", id, "x", "--json")
+	mustOK("label", "list-all", "--json")
+
+	mustFail("dep")
+	mustFail("dep", "add", id)
+	mustFail("dep", "list")
+	mustFail("dep", "remove", id)
+	mustFail("dep", "wat")
+	mustOK("dep", "add", id, id2, "--json")
+	mustOK("dep", "list", id, "--json")
+	mustOK("dep", "rm", id, id2, "--json")
+
+	mustFail("comments")
+	mustFail("comments", "add", id)
+	mustOK("comments", "add", id, "hi", "--json")
+	mustOK("comments", id, "--json")
+
+	mustFail("todo", "add")
+	mustFail("todo", "add", "x", "--priority", "bad", "--json")
+	mustFail("todo", "add", "x", "--wat")
+	mustFail("todo", "done")
+	mustFail("todo", "done", id, "--wat")
+	mustFail("todo", "wat")
+	todoID := firstID(t, mustOK("todo", "add", "x", "--description", "d", "--json"))
+	mustOK("todo", "list", "--json")
+	mustOK("todo", "done", todoID, "--reason", "done", "--json")
+
+	mustFail("children")
+	mustOK("children", id, "--json")
+
+	mustFail("blocked", "--wat")
+	mustOK("blocked", "--parent", id, "--json")
+
+	mustFail("duplicate")
+	mustFail("duplicate", id, "--wat")
+	mustFail("duplicate", id, "--json")
+	dupID := firstID(t, mustOK("create", "dup", "--json"))
+	mustOK("duplicate", dupID, "--of", id, "--json")
+
+	mustFail("supersede")
+	mustFail("supersede", id, "--wat")
+	mustFail("supersede", id, "--json")
+	replID := firstID(t, mustOK("create", "repl", "--json"))
+	mustOK("supersede", id, "--with", replID, "--json")
+
+	mustFail("types", "--wat")
+	mustOK("types", "--json")
+
+	mustFail("query")
+	mustFail("query", "priority^1", "--json")
+	mustOK("query", "status=open", "--json")
+
+	mustOK("search", "x", "--query", "x", "--limit", "3", "--json")
+	mustOK("search", "x", "--json", "--status", "open", "--sort", "id", "--reverse", "--long")
+	mustOK("search", "x", "-x", "--json")
+
+	mustOK("count", "--json")
+	mustOK("count", "-s", "open", "--json")
+	mustOK("status", "--json")
+}

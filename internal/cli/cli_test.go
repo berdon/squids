@@ -64,6 +64,14 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "sq - squids task CLI") {
 		t.Fatalf("help failed code=%d out=%q", code, out)
 	}
+	code, _, _ = runCLI(t, db, "-h")
+	if code != 0 {
+		t.Fatalf("-h failed code=%d", code)
+	}
+	code, _, _ = runCLI(t, db, "--help")
+	if code != 0 {
+		t.Fatalf("--help failed code=%d", code)
+	}
 
 	code, _, err := runCLI(t, db, "nope")
 	if code != 2 || !strings.Contains(err, "unknown command") {
@@ -191,6 +199,9 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	}
 	if code, _, _ = runCLI(t, db, "status", "--json"); code != 0 {
 		t.Fatalf("status failed")
+	}
+	if code, _, _ = runCLI(t, db, "stats", "--json"); code != 0 {
+		t.Fatalf("stats alias failed")
 	}
 
 	if code, _, _ = runCLI(t, db, "reopen", aID, "--json"); code != 0 {

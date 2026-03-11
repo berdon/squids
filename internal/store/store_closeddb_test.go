@@ -26,4 +26,34 @@ func TestClosedDBErrorPaths(t *testing.T) {
 	if _, err := ShowTask(w.DB, t1.ID); err == nil {
 		t.Fatalf("expected show error on closed db")
 	}
+	if _, err := UpdateTask(w.DB, t1.ID, UpdateInput{}); err == nil {
+		t.Fatalf("expected update error on closed db")
+	}
+	if _, err := CloseTask(w.DB, t1.ID, "x"); err == nil {
+		t.Fatalf("expected close error on closed db")
+	}
+	if _, err := ReopenTask(w.DB, t1.ID); err == nil {
+		t.Fatalf("expected reopen error on closed db")
+	}
+	if err := DeleteTask(w.DB, t1.ID); err == nil {
+		t.Fatalf("expected delete error on closed db")
+	}
+	if _, err := RemoveLabel(w.DB, t1.ID, "x"); err == nil {
+		t.Fatalf("expected remove label error on closed db")
+	}
+	if _, err := ListDependencies(w.DB, t1.ID); err == nil {
+		t.Fatalf("expected list dependencies error on closed db")
+	}
+	if err := RemoveDependency(w.DB, t1.ID, t2.ID); err == nil {
+		t.Fatalf("expected remove dependency error on closed db")
+	}
+	if _, err := ListChildren(w.DB, t1.ID); err == nil {
+		t.Fatalf("expected list children error on closed db")
+	}
+	if _, err := ListBlocked(w.DB); err == nil {
+		t.Fatalf("expected list blocked error on closed db")
+	}
+	if _, err := ListComments(w.DB, t1.ID); err == nil {
+		t.Fatalf("expected list comments error on closed db")
+	}
 }

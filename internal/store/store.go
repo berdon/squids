@@ -66,26 +66,27 @@ func Open(dbPath string) (*sql.DB, error) {
 	if dbPath == "" {
 		return nil, errors.New("db path required")
 	}
-
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return nil, fmt.Errorf("create db directory: %w", err)
 	}
-
 	dsn := fmt.Sprintf("file:%s?_busy_timeout=5000&_journal_mode=WAL&_foreign_keys=1", dbPath)
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
-
-	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("set wal mode: %w", err)
+	pragmas := []struct {
+		q   string
+		ctx string
+	}{
+		{"PRAGMA journal_mode=WAL;", "set wal mode"},
+		{"PRAGMA busy_timeout=5000;", "set busy_timeout"},
 	}
-	if _, err := db.Exec(`PRAGMA busy_timeout=5000;`); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("set busy_timeout: %w", err)
+	for _, p := range pragmas {
+		if _, err := db.Exec(p.q); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("%s: %w", p.ctx, err)
+		}
 	}
-
 	return db, nil
 }
 
@@ -94,6 +95,13 @@ func DefaultDBPath(cwd string) string {
 }
 
 // Init creates core schema/tables and seeds required config defaults.
+func execTx(tx *sql.Tx, query, context string, args ...any) error {
+	if _, err := tx.Exec(query, args...); err != nil {
+		return fmt.Errorf("%s: %w", context, err)
+	}
+	return nil
+}
+
 func Init(db *sql.DB) error {
 	if db == nil {
 		return errors.New("db is nil")
@@ -107,16 +115,17 @@ func Init(db *sql.DB) error {
 		_ = tx.Rollback()
 	}()
 
-	if _, err := tx.Exec(`
+	stmts := []struct {
+		q   string
+		ctx string
+	}{
+		{`
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
   applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-`); err != nil {
-		return fmt.Errorf("create schema_migrations: %w", err)
-	}
-
-	if _, err := tx.Exec(`
+`, "create schema_migrations"},
+		{`
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -134,28 +143,17 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   closed_at TEXT DEFAULT ''
 );
-`); err != nil {
-		return fmt.Errorf("create tasks: %w", err)
-	}
-
-	if _, err := tx.Exec(`
-CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-`); err != nil {
-		return fmt.Errorf("create status index: %w", err)
-	}
-
-	if _, err := tx.Exec(`
+`, "create tasks"},
+		{`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);`, "create status index"},
+		{`
 CREATE TABLE IF NOT EXISTS dependencies (
   issue_id TEXT NOT NULL,
   depends_on_id TEXT NOT NULL,
   dep_type TEXT NOT NULL DEFAULT 'blocks',
   PRIMARY KEY(issue_id, depends_on_id, dep_type)
 );
-`); err != nil {
-		return fmt.Errorf("create dependencies: %w", err)
-	}
-
-	if _, err := tx.Exec(`
+`, "create dependencies"},
+		{`
 CREATE TABLE IF NOT EXISTS comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   issue_id TEXT NOT NULL,
@@ -163,40 +161,27 @@ CREATE TABLE IF NOT EXISTS comments (
   body TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-`); err != nil {
-		return fmt.Errorf("create comments: %w", err)
-	}
-
-	if _, err := tx.Exec(`
+`, "create comments"},
+		{`
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-`); err != nil {
-		return fmt.Errorf("create config: %w", err)
+`, "create config"},
+		{`INSERT OR IGNORE INTO config(key,value) VALUES ('id_prefix','bd')`, "seed id_prefix"},
+		{`INSERT OR IGNORE INTO config(key,value) VALUES ('issue_id_mode','hash')`, "seed issue_id_mode"},
+		{`INSERT OR IGNORE INTO config(key,value) VALUES ('min_hash_length','3')`, "seed min_hash_length"},
+		{`INSERT OR IGNORE INTO config(key,value) VALUES ('max_hash_length','8')`, "seed max_hash_length"},
+		{`INSERT OR IGNORE INTO config(key,value) VALUES ('max_collision_prob','0.25')`, "seed max_collision_prob"},
 	}
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('id_prefix','bd')`); err != nil {
-		return fmt.Errorf("seed id_prefix: %w", err)
+	for _, s := range stmts {
+		if err := execTx(tx, s.q, s.ctx); err != nil {
+			return err
+		}
 	}
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('issue_id_mode','hash')`); err != nil {
-		return fmt.Errorf("seed issue_id_mode: %w", err)
+	if err := execTx(tx, `INSERT OR IGNORE INTO schema_migrations(version) VALUES (?);`, "insert schema version", currentSchemaVersion); err != nil {
+		return err
 	}
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('min_hash_length','3')`); err != nil {
-		return fmt.Errorf("seed min_hash_length: %w", err)
-	}
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('max_hash_length','8')`); err != nil {
-		return fmt.Errorf("seed max_hash_length: %w", err)
-	}
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('max_collision_prob','0.25')`); err != nil {
-		return fmt.Errorf("seed max_collision_prob: %w", err)
-	}
-
-	if _, err := tx.Exec(`
-INSERT OR IGNORE INTO schema_migrations(version) VALUES (?);
-`, currentSchemaVersion); err != nil {
-		return fmt.Errorf("insert schema version: %w", err)
-	}
-
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit schema init: %w", err)
 	}
@@ -264,18 +249,21 @@ func nextCounterID(db *sql.DB, prefix string) (string, error) {
 		return "", err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS issue_counter (prefix TEXT PRIMARY KEY, last_id INTEGER NOT NULL DEFAULT 0)`); err != nil {
-		return "", err
+	steps := []struct {
+		q    string
+		args []any
+	}{
+		{`CREATE TABLE IF NOT EXISTS issue_counter (prefix TEXT PRIMARY KEY, last_id INTEGER NOT NULL DEFAULT 0)`, nil},
+		{`INSERT OR IGNORE INTO issue_counter(prefix,last_id) VALUES (?,0)`, []any{prefix}},
+		{`UPDATE issue_counter SET last_id = last_id + 1 WHERE prefix=?`, []any{prefix}},
 	}
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO issue_counter(prefix,last_id) VALUES (?,0)`, prefix); err != nil {
-		return "", err
+	for _, s := range steps {
+		if _, err := tx.Exec(s.q, s.args...); err != nil {
+			return "", err
+		}
 	}
-	if _, err := tx.Exec(`UPDATE issue_counter SET last_id = last_id + 1 WHERE prefix=?`, prefix); err != nil {
-		return "", err
-	}
-	row := tx.QueryRow(`SELECT last_id FROM issue_counter WHERE prefix=?`, prefix)
 	var n int
-	if err := row.Scan(&n); err != nil {
+	if err := tx.QueryRow(`SELECT last_id FROM issue_counter WHERE prefix=?`, prefix).Scan(&n); err != nil {
 		return "", err
 	}
 	if err := tx.Commit(); err != nil {
@@ -473,10 +461,7 @@ func DeleteTask(db *sql.DB, id string) error {
 	if err != nil {
 		return err
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
+	n, _ := res.RowsAffected()
 	if n == 0 {
 		return fmt.Errorf("issue not found: %s", id)
 	}
@@ -578,10 +563,7 @@ func RemoveDependency(db *sql.DB, issueID, dependsOnID string) error {
 	if err != nil {
 		return err
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
+	n, _ := res.RowsAffected()
 	if n == 0 {
 		return fmt.Errorf("dependency not found: %s -> %s", issueID, dependsOnID)
 	}

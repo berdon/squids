@@ -142,6 +142,17 @@ func TestDependenciesChildrenBlockedAndComments(t *testing.T) {
 	}
 }
 
+func TestComputeAdaptiveLengthMaxFallback(t *testing.T) {
+	got := computeAdaptiveLength(1_000_000_000, 3, 4, 0.000000001)
+	if got != 4 {
+		t.Fatalf("expected max fallback 4 got %d", got)
+	}
+	got2 := computeAdaptiveLength(1, 3, 8, 0.9)
+	if got2 != 3 {
+		t.Fatalf("expected early return 3 got %d", got2)
+	}
+}
+
 func TestSearchCountStatusQueryCoverage(t *testing.T) {
 	w, done := openTestDB(t)
 	defer done()
@@ -173,6 +184,7 @@ func TestSearchCountStatusQueryCoverage(t *testing.T) {
 		"priority<=3",
 		"priority>0",
 		"priority<5",
+		"status=closed AND priority>=1",
 	}
 	for _, q := range queries {
 		if _, err := QueryTasks(w.DB, q); err != nil {
@@ -184,6 +196,21 @@ func TestSearchCountStatusQueryCoverage(t *testing.T) {
 	}
 	if _, err := QueryTasks(w.DB, "madeup=1"); err == nil {
 		t.Fatalf("expected unknown field error")
+	}
+	if _, err := QueryTasks(w.DB, "type>=1"); err == nil {
+		t.Fatalf("expected non-priority comparator error")
+	}
+	if _, err := QueryTasks(w.DB, "type<=1"); err == nil {
+		t.Fatalf("expected non-priority comparator error")
+	}
+	if _, err := QueryTasks(w.DB, "type>1"); err == nil {
+		t.Fatalf("expected non-priority comparator error")
+	}
+	if _, err := QueryTasks(w.DB, "type<1"); err == nil {
+		t.Fatalf("expected non-priority comparator error")
+	}
+	if _, err := QueryTasks(w.DB, "status~open"); err == nil {
+		t.Fatalf("expected invalid clause error")
 	}
 }
 

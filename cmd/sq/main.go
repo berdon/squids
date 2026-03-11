@@ -6,6 +6,10 @@ import (
 	"gitea/auhanson/squids/internal/cli"
 )
 
+func run(args []string) int {
+	return cli.Run(args)
+}
+
 func main() {
-	os.Exit(cli.Run(os.Args[1:]))
+	os.Exit(run(os.Args[1:]))
 }
