@@ -17,6 +17,8 @@ func Run(args []string) int {
 	case "-h", "--help", "help":
 		usage()
 		return 0
+	case "-V", "--version":
+		return cmdVersion(nil)
 	case "init":
 		return cmdInit()
 	case "ready":

@@ -162,4 +162,16 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 		t.Fatalf("expected plain version output, got %q", v)
 	}
 	mustOK("version", "--json")
+	mustOK("version", "--help")
+	mustOK("version", "-h")
+	mustOK("version", "--quiet")
+	mustOK("version", "--verbose")
+	mustOK("version", "--profile")
+	mustOK("version", "--readonly")
+	mustOK("version", "--sandbox")
+	mustOK("version", "--actor", "tester")
+	mustOK("version", "--db", "/tmp/sq.db")
+	mustOK("version", "--dolt-auto-commit", "off")
+	mustOK("-V")
+	mustOK("--version")
 }

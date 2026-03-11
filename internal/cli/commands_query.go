@@ -171,13 +171,25 @@ func cmdStatus() int {
 
 func cmdVersion(args []string) int {
 	jsonOut := false
-	for _, a := range args {
-		if a == "--json" {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json":
 			jsonOut = true
-			continue
-		}
-		if strings.HasPrefix(a, "-") {
-			return failUsage("unknown flag: " + a)
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Print version information")
+			return 0
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			// accepted compatibility flags with values (no-op)
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
 		}
 	}
 	if jsonOut {

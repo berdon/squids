@@ -289,6 +289,18 @@ VERSION_TXT="$(run_target "version")"
 assert_contains "$VERSION_TXT" "version"
 VERSION_JSON="$(run_target "version --json")"
 assert_contains "$VERSION_JSON" "version"
+VERSION_HELP="$(run_target "version --help")"
+assert_contains "$VERSION_HELP" "Print version information"
+run_target "version --quiet" >/dev/null
+run_target "version --verbose" >/dev/null
+run_target "version --profile" >/dev/null
+run_target "version --readonly" >/dev/null
+run_target "version --sandbox" >/dev/null
+run_target "version --actor tester" >/dev/null
+run_target "version --db /tmp/sq.db" >/dev/null
+run_target "version --dolt-auto-commit off" >/dev/null
+run_target "-V" >/dev/null
+run_target "--version" >/dev/null
 
 # 15) negative path: missing issue show should fail
 set +e
