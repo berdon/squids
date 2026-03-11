@@ -48,6 +48,7 @@ func usage() {
 	fmt.Println("  close   Close a task")
 	fmt.Println("  reopen  Reopen a task")
 	fmt.Println("  delete  Delete a task")
+	fmt.Println("  label   Manage labels")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
@@ -345,6 +346,42 @@ func cmdDelete(args []string) int {
 	return printJSON(map[string]any{"id": id, "deleted": true})
 }
 
+func cmdLabel(args []string) int {
+	if len(args) == 0 {
+		return failUsage("label subcommand required")
+	}
+	sub := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	switch sub {
+	case "add":
+		if len(args) < 3 { return failUsage("usage: sq label add <id> <label> [--json]") }
+		t, err := store.AddLabel(db, args[1], args[2])
+		if err != nil { return failRuntime(err.Error()) }
+		return printJSON(t)
+	case "remove":
+		if len(args) < 3 { return failUsage("usage: sq label remove <id> <label> [--json]") }
+		t, err := store.RemoveLabel(db, args[1], args[2])
+		if err != nil { return failRuntime(err.Error()) }
+		return printJSON(t)
+	case "list":
+		if len(args) < 2 { return failUsage("usage: sq label list <id> [--json]") }
+		labels, err := store.ListLabels(db, args[1])
+		if err != nil { return failRuntime(err.Error()) }
+		return printJSON(labels)
+	case "list-all":
+		labels, err := store.ListAllLabels(db)
+		if err != nil { return failRuntime(err.Error()) }
+		return printJSON(labels)
+	default:
+		return failUsage("unknown label subcommand: " + sub)
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -373,6 +410,8 @@ func main() {
 		os.Exit(cmdReopen(os.Args[2:]))
 	case "delete":
 		os.Exit(cmdDelete(os.Args[2:]))
+	case "label":
+		os.Exit(cmdLabel(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		usage()

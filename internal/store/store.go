@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -446,4 +447,58 @@ func DeleteTask(db *sql.DB, id string) error {
 		return fmt.Errorf("issue not found: %s", id)
 	}
 	return nil
+}
+
+func AddLabel(db *sql.DB, id, label string) (*Task, error) {
+	if strings.TrimSpace(label) == "" {
+		return nil, errors.New("label is required")
+	}
+	return UpdateTask(db, id, UpdateInput{AddLabels: []string{label}})
+}
+
+func RemoveLabel(db *sql.DB, id, label string) (*Task, error) {
+	t, err := ShowTask(db, id)
+	if err != nil {
+		return nil, err
+	}
+	keep := make([]string, 0, len(t.Labels))
+	for _, l := range t.Labels {
+		if l != label {
+			keep = append(keep, l)
+		}
+	}
+	labelsRaw, _ := json.Marshal(keep)
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = db.Exec(`UPDATE tasks SET labels_json=?,updated_at=? WHERE id=?`, string(labelsRaw), now, id)
+	if err != nil {
+		return nil, err
+	}
+	return ShowTask(db, id)
+}
+
+func ListLabels(db *sql.DB, id string) ([]string, error) {
+	t, err := ShowTask(db, id)
+	if err != nil {
+		return nil, err
+	}
+	return t.Labels, nil
+}
+
+func ListAllLabels(db *sql.DB) ([]string, error) {
+	tasks, err := ListTasks(db)
+	if err != nil {
+		return nil, err
+	}
+	set := map[string]bool{}
+	for _, t := range tasks {
+		for _, l := range t.Labels {
+			set[l] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for l := range set {
+		out = append(out, l)
+	}
+	sort.Strings(out)
+	return out, nil
 }

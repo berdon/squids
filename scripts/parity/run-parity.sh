@@ -101,6 +101,21 @@ assert_contains "$LIST_JSON" "$TASK_ID"
 # 6) labels + deps
 META_JSON="$(run_target "update $TASK_ID --add-label shop:forge --add-label type:mail --json")"
 assert_contains "$META_JSON" "shop:forge"
+
+# 6a) label command family parity
+LABEL_ADD_JSON="$(run_target "label add $TASK_ID triage --json")"
+assert_contains "$LABEL_ADD_JSON" "triage"
+LABEL_LIST_JSON="$(run_target "label list $TASK_ID --json")"
+assert_contains "$LABEL_LIST_JSON" "triage"
+LABEL_REMOVE_JSON="$(run_target "label remove $TASK_ID triage --json")"
+LABEL_LIST_AFTER_REMOVE="$(run_target "label list $TASK_ID --json")"
+if [[ "$LABEL_LIST_AFTER_REMOVE" == *"triage"* ]]; then
+  echo "ASSERT FAILED: expected triage to be removed"
+  exit 1
+fi
+LABEL_ALL_JSON="$(run_target "label list-all --json")"
+assert_contains "$LABEL_ALL_JSON" "shop:forge"
+
 SECOND_JSON="$(run_target "create 'Dependency task' --type task --priority 2 --json")"
 SECOND_ID="$(json_field "$SECOND_JSON" "id")"
 DEP_JSON="$(run_target "update $TASK_ID --set-metadata upstream=$SECOND_ID --json")"
