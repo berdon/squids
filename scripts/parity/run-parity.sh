@@ -193,7 +193,15 @@ assert_contains "$SEARCH_JSON" "$TASK_ID"
 SEARCH_EMPTY_JSON="$(run_target "search \"no-match-xyz-123\" --json")"
 assert_contains "$SEARCH_EMPTY_JSON" "["
 
-# 14) negative path: missing issue show should fail
+# 14) count/status parity
+COUNT_JSON="$(run_target "count --json")"
+assert_contains "$COUNT_JSON" "count"
+COUNT_OPEN_JSON="$(run_target "count --status open --json")"
+assert_contains "$COUNT_OPEN_JSON" "count"
+STATUS_JSON="$(run_target "status --json")"
+assert_contains "$STATUS_JSON" "open"
+
+# 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
 MISSING_CODE=$?

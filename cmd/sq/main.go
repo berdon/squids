@@ -53,6 +53,8 @@ func usage() {
 	fmt.Println("  comments Manage comments")
 	fmt.Println("  query   Query tasks")
 	fmt.Println("  search  Search tasks")
+	fmt.Println("  count   Count tasks")
+	fmt.Println("  status  Show status summary")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
@@ -519,6 +521,41 @@ func cmdSearch(args []string) int {
 	return printJSON(items)
 }
 
+func cmdCount(args []string) int {
+	status := ""
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--status" || args[i] == "-s" {
+			if i+1 < len(args) {
+				status = args[i+1]
+				i++
+			}
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	n, err := store.CountTasks(db, status)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"count": n})
+}
+
+func cmdStatus() int {
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	s, err := store.StatusSummary(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(s)
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -557,6 +594,10 @@ func main() {
 		os.Exit(cmdQuery(os.Args[2:]))
 	case "search":
 		os.Exit(cmdSearch(os.Args[2:]))
+	case "count":
+		os.Exit(cmdCount(os.Args[2:]))
+	case "status", "stats":
+		os.Exit(cmdStatus())
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		usage()

@@ -659,6 +659,41 @@ func SearchTasks(db *sql.DB, query string, limit int) ([]Task, error) {
 	return out, nil
 }
 
+func CountTasks(db *sql.DB, statusFilter string) (int, error) {
+	if strings.TrimSpace(statusFilter) == "" {
+		row := db.QueryRow(`SELECT COUNT(*) FROM tasks`)
+		var n int
+		if err := row.Scan(&n); err != nil {
+			return 0, err
+		}
+		return n, nil
+	}
+	row := db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE status=?`, statusFilter)
+	var n int
+	if err := row.Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+func StatusSummary(db *sql.DB) (map[string]int, error) {
+	rows, err := db.Query(`SELECT status, COUNT(*) FROM tasks GROUP BY status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	summary := map[string]int{"open": 0, "in_progress": 0, "closed": 0, "resolved": 0}
+	for rows.Next() {
+		var s string
+		var c int
+		if err := rows.Scan(&s, &c); err != nil {
+			return nil, err
+		}
+		summary[s] = c
+	}
+	return summary, nil
+}
+
 func QueryTasks(db *sql.DB, expr string) ([]Task, error) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {
