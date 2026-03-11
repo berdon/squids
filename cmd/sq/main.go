@@ -56,6 +56,7 @@ func usage() {
 	fmt.Println("  blocked Show blocked tasks")
 	fmt.Println("  duplicate Mark issue as duplicate of canonical issue")
 	fmt.Println("  supersede Mark issue as superseded by replacement")
+	fmt.Println("  types   List supported issue types")
 	fmt.Println("  query   Query tasks")
 	fmt.Println("  search  Search tasks")
 	fmt.Println("  count   Count tasks")
@@ -726,6 +727,25 @@ func cmdSupersede(args []string) int {
 	return printJSON(map[string]any{"replacement": replacement, "superseded": id, "status": "closed"})
 }
 
+func cmdTypes(args []string) int {
+	for _, a := range args {
+		if a == "--json" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+	}
+	return printJSON(map[string]any{"core_types": []map[string]string{
+		{"name": "task", "description": "General work item (default)"},
+		{"name": "bug", "description": "Bug report or defect"},
+		{"name": "feature", "description": "New feature or enhancement"},
+		{"name": "chore", "description": "Maintenance or housekeeping"},
+		{"name": "epic", "description": "Large body of work spanning multiple issues"},
+		{"name": "decision", "description": "Architecture decision record (ADR)"},
+	}})
+}
+
 func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
@@ -876,6 +896,8 @@ func main() {
 		os.Exit(cmdDuplicate(os.Args[2:]))
 	case "supersede":
 		os.Exit(cmdSupersede(os.Args[2:]))
+	case "types":
+		os.Exit(cmdTypes(os.Args[2:]))
 	case "query":
 		os.Exit(cmdQuery(os.Args[2:]))
 	case "search":

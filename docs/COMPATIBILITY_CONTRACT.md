@@ -29,6 +29,7 @@ This contract defines behavior that must match for parity tests to pass.
 - `sq blocked --json`
 - `sq duplicate <id> --of <canonical-id> --json`
 - `sq supersede <id> --with <replacement-id> --json`
+- `sq types --json`
 
 ## JSON Contract Rules
 
@@ -85,6 +86,9 @@ This contract defines behavior that must match for parity tests to pass.
 ### Duplicate / supersede flows
 - `duplicate <id> --of <canonical-id>` closes `<id>` and records a `duplicates` relationship to the canonical issue.
 - `supersede <id> --with <replacement-id>` closes `<id>` and records a `supersedes` relationship to the replacement issue.
+
+### Types listing
+- `types` returns supported core issue types via a JSON object containing `core_types`.
 
 ## Exit Code Contract
 

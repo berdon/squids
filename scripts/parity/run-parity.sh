@@ -234,6 +234,11 @@ assert_contains "$SEARCH_JSON" "$TASK_ID"
 SEARCH_EMPTY_JSON="$(run_target "search \"no-match-xyz-123\" --json")"
 assert_contains "$SEARCH_EMPTY_JSON" "["
 
+# 13a) types command parity
+TYPES_JSON="$(run_target "types --json")"
+assert_contains "$TYPES_JSON" "core_types"
+assert_contains "$TYPES_JSON" "task"
+
 # 14) count/status parity
 COUNT_JSON="$(run_target "count --json")"
 assert_contains "$COUNT_JSON" "count"
