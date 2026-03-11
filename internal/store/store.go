@@ -1,16 +1,18 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"gitea/auhanson/squids/internal/idgen"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -44,6 +46,7 @@ type CreateInput struct {
 	Description string
 	IssueType   string
 	Priority    int
+	Creator     string
 }
 
 type UpdateInput struct {
@@ -137,6 +140,30 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 	}
 
 	if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+`); err != nil {
+		return fmt.Errorf("create config: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('id_prefix','bd')`); err != nil {
+		return fmt.Errorf("seed id_prefix: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('issue_id_mode','hash')`); err != nil {
+		return fmt.Errorf("seed issue_id_mode: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('min_hash_length','3')`); err != nil {
+		return fmt.Errorf("seed min_hash_length: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('max_hash_length','8')`); err != nil {
+		return fmt.Errorf("seed max_hash_length: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO config(key,value) VALUES ('max_collision_prob','0.25')`); err != nil {
+		return fmt.Errorf("seed max_collision_prob: %w", err)
+	}
+
+	if _, err := tx.Exec(`
 INSERT OR IGNORE INTO schema_migrations(version) VALUES (?);
 `, currentSchemaVersion); err != nil {
 		return fmt.Errorf("insert schema version: %w", err)
@@ -179,38 +206,107 @@ func Ping(db *sql.DB) error {
 	return db.Ping()
 }
 
-func nextID() (string, error) {
-	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
-	buf := make([]byte, 3)
-	for i := 0; i < len(buf); i++ {
-		var b [1]byte
-		if _, err := rand.Read(b[:]); err != nil {
-			return "", err
-		}
-		buf[i] = alphabet[int(b[0])%len(alphabet)]
+func getConfigValue(db *sql.DB, key, fallback string) string {
+	row := db.QueryRow(`SELECT value FROM config WHERE key=?`, key)
+	var val string
+	if err := row.Scan(&val); err != nil || strings.TrimSpace(val) == "" {
+		return fallback
 	}
-	return "bd-" + string(buf), nil
+	return val
+}
+
+func collisionProbability(numIssues int, idLength int) float64 {
+	totalPossibilities := math.Pow(36.0, float64(idLength))
+	exponent := -float64(numIssues*numIssues) / (2.0 * totalPossibilities)
+	return 1.0 - math.Exp(exponent)
+}
+
+func computeAdaptiveLength(numIssues, minLength, maxLength int, maxCollisionProb float64) int {
+	for length := minLength; length <= maxLength; length++ {
+		if collisionProbability(numIssues, length) <= maxCollisionProb {
+			return length
+		}
+	}
+	return maxLength
+}
+
+func nextCounterID(db *sql.DB, prefix string) (string, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS issue_counter (prefix TEXT PRIMARY KEY, last_id INTEGER NOT NULL DEFAULT 0)`); err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO issue_counter(prefix,last_id) VALUES (?,0)`, prefix); err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(`UPDATE issue_counter SET last_id = last_id + 1 WHERE prefix=?`, prefix); err != nil {
+		return "", err
+	}
+	row := tx.QueryRow(`SELECT last_id FROM issue_counter WHERE prefix=?`, prefix)
+	var n int
+	if err := row.Scan(&n); err != nil {
+		return "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s-%d", prefix, n), nil
 }
 
 func CreateTask(db *sql.DB, in CreateInput) (*Task, error) {
 	if strings.TrimSpace(in.Title) == "" {
 		return nil, errors.New("title is required")
 	}
-	now := time.Now().UTC().Format(time.RFC3339)
-	for attempt := 0; attempt < 32; attempt++ {
-		id, err := nextID()
+	prefix := getConfigValue(db, "id_prefix", "bd")
+	idMode := getConfigValue(db, "issue_id_mode", "hash")
+	creator := in.Creator
+	if strings.TrimSpace(creator) == "" {
+		creator = "unknown"
+	}
+
+	nowTs := time.Now().UTC()
+	now := nowTs.Format(time.RFC3339)
+
+	if idMode == "counter" {
+		id, err := nextCounterID(db, prefix)
 		if err != nil {
 			return nil, err
 		}
 		_, err = db.Exec(`INSERT INTO tasks(id,title,description,status,priority,issue_type,labels_json,deps_json,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
 			id, in.Title, in.Description, "open", in.Priority, in.IssueType, "[]", "[]", "{}", now, now)
-		if err == nil {
-			return ShowTask(db, id)
+		if err != nil {
+			return nil, err
 		}
-		if strings.Contains(strings.ToLower(err.Error()), "unique") {
-			continue
+		return ShowTask(db, id)
+	}
+
+	minLen, _ := strconv.Atoi(getConfigValue(db, "min_hash_length", "3"))
+	maxLen, _ := strconv.Atoi(getConfigValue(db, "max_hash_length", "8"))
+	maxProb, _ := strconv.ParseFloat(getConfigValue(db, "max_collision_prob", "0.25"), 64)
+	if minLen < 3 { minLen = 3 }
+	if maxLen > 8 { maxLen = 8 }
+	if maxLen < minLen { maxLen = minLen }
+
+	var numIssues int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE id LIKE ?`, prefix+"-%").Scan(&numIssues)
+	baseLen := computeAdaptiveLength(numIssues, minLen, maxLen, maxProb)
+
+	for length := baseLen; length <= maxLen; length++ {
+		for nonce := 0; nonce < 10; nonce++ {
+			id := idgen.GenerateHashID(prefix, in.Title, in.Description, creator, nowTs, length, nonce)
+			_, err := db.Exec(`INSERT INTO tasks(id,title,description,status,priority,issue_type,labels_json,deps_json,metadata_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+				id, in.Title, in.Description, "open", in.Priority, in.IssueType, "[]", "[]", "{}", now, now)
+			if err == nil {
+				return ShowTask(db, id)
+			}
+			if strings.Contains(strings.ToLower(err.Error()), "unique") {
+				continue
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 	return nil, errors.New("failed to allocate unique id after retries")
 }

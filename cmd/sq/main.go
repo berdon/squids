@@ -122,7 +122,11 @@ func cmdCreate(args []string) int {
 	if len(args) == 0 {
 		return failUsage("title is required")
 	}
-	in := store.CreateInput{Title: args[0], IssueType: "task"}
+	creator := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+	if creator == "" {
+		creator = strings.TrimSpace(os.Getenv("USER"))
+	}
+	in := store.CreateInput{Title: args[0], IssueType: "task", Creator: creator}
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--type":
