@@ -638,6 +638,27 @@ func ListComments(db *sql.DB, issueID string) ([]Comment, error) {
 	return out, nil
 }
 
+func SearchTasks(db *sql.DB, query string, limit int) ([]Task, error) {
+	query = strings.TrimSpace(strings.ToLower(query))
+	if limit <= 0 {
+		limit = 50
+	}
+	tasks, err := ListTasks(db)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Task, 0)
+	for _, t := range tasks {
+		if query == "" || strings.Contains(strings.ToLower(t.ID), query) || strings.Contains(strings.ToLower(t.Title), query) || strings.Contains(strings.ToLower(t.Description), query) {
+			out = append(out, t)
+			if len(out) >= limit {
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
 func QueryTasks(db *sql.DB, expr string) ([]Task, error) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {

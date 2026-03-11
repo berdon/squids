@@ -52,6 +52,7 @@ func usage() {
 	fmt.Println("  dep     Manage dependencies")
 	fmt.Println("  comments Manage comments")
 	fmt.Println("  query   Query tasks")
+	fmt.Println("  search  Search tasks")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
@@ -477,6 +478,47 @@ func cmdQuery(args []string) int {
 	return printJSON(items)
 }
 
+func cmdSearch(args []string) int {
+	query := ""
+	limit := 50
+	if len(args) > 0 {
+		query = args[0]
+	}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--query":
+			if i+1 < len(args) {
+				query = args[i+1]
+				i++
+			}
+		case "--limit", "-n":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil {
+					limit = n
+				}
+				i++
+			}
+		case "--json", "--status", "--sort", "--reverse", "--long":
+			// accepted compatibility flags
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				// ignore unsupported compatibility flags for now
+				continue
+			}
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.SearchTasks(db, query, limit)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -513,6 +555,8 @@ func main() {
 		os.Exit(cmdComments(os.Args[2:]))
 	case "query":
 		os.Exit(cmdQuery(os.Args[2:]))
+	case "search":
+		os.Exit(cmdSearch(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		usage()

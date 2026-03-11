@@ -187,7 +187,13 @@ if [[ $BAD_QUERY_CODE -eq 0 ]]; then
 fi
 assert_contains "$BAD_QUERY_OUT" "unknown"
 
-# 13) negative path: missing issue show should fail
+# 13) search command parity
+SEARCH_JSON="$(run_target "search \"Parity lifecycle\" --json -n 5")"
+assert_contains "$SEARCH_JSON" "$TASK_ID"
+SEARCH_EMPTY_JSON="$(run_target "search \"no-match-xyz-123\" --json")"
+assert_contains "$SEARCH_EMPTY_JSON" "["
+
+# 14) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
 MISSING_CODE=$?
