@@ -109,6 +109,7 @@ _Generated: 2026-03-11 06:36_
 - Missing flags in sq (0): none
 - Missing subcommands in sq: none
 - Note: shared/beads hooks path configuration now covered in sq (`core.hooksPath` set/reset in git repos; no-op outside git).
+- Note: shell parity suite now asserts functional hooks install/list/uninstall behavior (installed-state transitions), not just command-surface responses.
 
 ### `human`
 - Missing flags in sq (0): none

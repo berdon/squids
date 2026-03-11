@@ -359,12 +359,32 @@ if [[ ! -f .beads-hooks/pre-commit ]]; then
   echo "ASSERT FAILED: expected shared hook file after install"
   exit 1
 fi
+HOOKS_LIST_AFTER_JSON="$(run_target "hooks list --shared --json")"
+python3 - <<PY
+import json
+obj=json.loads('''$HOOKS_LIST_AFTER_JSON''')
+hooks=obj.get('hooks',[])
+if not hooks:
+    raise SystemExit('ASSERT FAILED: hooks list empty after install')
+if not all(h.get('installed') for h in hooks):
+    raise SystemExit('ASSERT FAILED: expected all hooks installed after shared install')
+PY
 # In parity temp workspace there may be no git repo; core.hooksPath checks are covered in unit tests.
 run_target "hooks uninstall --json" >/dev/null
 if [[ -f .beads-hooks/pre-commit ]]; then
   echo "ASSERT FAILED: expected shared hook file removed after uninstall"
   exit 1
 fi
+HOOKS_LIST_FINAL_JSON="$(run_target "hooks list --shared --json")"
+python3 - <<PY
+import json
+obj=json.loads('''$HOOKS_LIST_FINAL_JSON''')
+hooks=obj.get('hooks',[])
+if not hooks:
+    raise SystemExit('ASSERT FAILED: hooks list empty after uninstall')
+if any(h.get('installed') for h in hooks):
+    raise SystemExit('ASSERT FAILED: expected hooks uninstalled after uninstall')
+PY
 run_target "hooks run pre-commit --json" >/dev/null
 MSG_FILE="./COMMIT_MSG"
 echo "feat: parity" > "$MSG_FILE"
