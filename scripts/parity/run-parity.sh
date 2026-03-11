@@ -317,6 +317,15 @@ WHERE_JSON="$(run_target "where --json")"
 assert_contains "$WHERE_JSON" "database_path"
 run_target "where --actor tester" >/dev/null
 
+# 14d) info parity
+INFO_JSON="$(run_target "info --json")"
+assert_contains "$INFO_JSON" "database_path"
+INFO_SCHEMA_JSON="$(run_target "info --schema --json")"
+assert_contains "$INFO_SCHEMA_JSON" "schema"
+run_target "info --whats-new" >/dev/null
+run_target "info --whats-new --json" >/dev/null
+run_target "info --thanks" >/dev/null
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"

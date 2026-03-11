@@ -290,3 +290,80 @@ func cmdWhere(args []string) int {
 	}
 	return 0
 }
+
+func cmdInfo(args []string) int {
+	jsonOut := false
+	schemaOut := false
+	whatsNew := false
+	thanks := false
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--schema":
+			schemaOut = true
+		case "--whats-new":
+			whatsNew = true
+		case "--thanks":
+			thanks = true
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Display information about the current database.")
+			return 0
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	if thanks {
+		_, _ = fmt.Fprintln(os.Stdout, "Thanks to all squids and beads contributors.")
+		return 0
+	}
+	if whatsNew {
+		if jsonOut {
+			return printJSON(map[string]any{"current_version": Version, "recent_changes": []map[string]any{{"version": Version, "changes": []string{"sq info command parity"}}}})
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "What's New (sq v%s)\n- sq info command parity\n", Version)
+		return 0
+	}
+	dbPath, err := dbPathFromEnvOrCwd()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	tasks, err := store.ListTasks(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	cfg := map[string]string{"issue_prefix": "bd"}
+	if v, err := store.CurrentVersion(db); err == nil {
+		cfg["schema_version"] = strconv.Itoa(v)
+	}
+	info := map[string]any{"database_path": dbPath, "mode": "direct", "issue_count": len(tasks), "config": cfg}
+	if schemaOut {
+		samples := []string{}
+		for i := 0; i < len(tasks) && i < 3; i++ {
+			samples = append(samples, tasks[i].ID)
+		}
+		info["schema"] = map[string]any{"tables": []string{"tasks", "dependencies", "labels", "comments", "metadata"}, "schema_version": cfg["schema_version"], "sample_issue_ids": samples, "detected_prefix": "bd"}
+	}
+	if jsonOut {
+		return printJSON(info)
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "\nSquids Database Information\n==========================\nDatabase: %s\nMode: direct\n\nIssue Count: %d\n", dbPath, len(tasks))
+	if schemaOut {
+		_, _ = fmt.Fprintln(os.Stdout, "\nSchema Information: included")
+	}
+	return 0
+}

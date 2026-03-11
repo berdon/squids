@@ -187,4 +187,13 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("where", "--json")
 	mustOK("where", "--help")
 	mustOK("where", "--actor", "tester")
+
+	mustFail("info", "--wat")
+	mustOK("info")
+	mustOK("info", "--json")
+	mustOK("info", "--schema", "--json")
+	mustOK("info", "--whats-new")
+	mustOK("info", "--whats-new", "--json")
+	mustOK("info", "--thanks")
+	mustOK("info", "--help")
 }
