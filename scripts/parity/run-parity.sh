@@ -335,6 +335,11 @@ assert_contains "$HUMAN_LIST_JSON" "$HUMAN_TASK_ID"
 run_target "human stats" >/dev/null
 run_target "human respond $HUMAN_TASK_ID --response acknowledged --json" >/dev/null
 
+# 14f) quickstart parity
+QUICKSTART_TXT="$(run_target "quickstart")"
+assert_contains "$QUICKSTART_TXT" "quickstart"
+run_target "quickstart --actor tester" >/dev/null
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"

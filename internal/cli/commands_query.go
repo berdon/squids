@@ -513,3 +513,31 @@ func cmdHuman(args []string) int {
 		return failUsage("unknown human subcommand: " + sub)
 	}
 }
+
+func cmdQuickstart(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Display a quick start guide showing common sq workflows.")
+			return 0
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "sq quickstart")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq init --json")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq create \"My first issue\" --type task --priority 2 --json")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq ready --json")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq update <id> --claim --json")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq close <id> --reason \"Done\" --json")
+	return 0
+}

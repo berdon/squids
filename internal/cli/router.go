@@ -87,6 +87,8 @@ func Run(args []string) int {
 		return cmdInfo(args[1:])
 	case "human":
 		return cmdHuman(args[1:])
+	case "quickstart":
+		return cmdQuickstart(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()

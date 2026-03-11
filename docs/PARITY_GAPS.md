@@ -1,16 +1,16 @@
 # bd ↔ sq Deep Parity Matrix (Command/Flag/Subcommand Gaps)
 
-_Generated: 2026-03-11 06:18_
+_Generated: 2026-03-11 06:26_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **34**
-- Shared commands: **34**
-- Missing in sq: **59**
+- sq commands: **35**
+- Shared commands: **35**
+- Missing in sq: **58**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `history`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `history`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -35,6 +35,7 @@ _Generated: 2026-03-11 06:18_
 | `orphans` | 15 | — |
 | `q` | 16 | — |
 | `query` | 14 | `assignee`, `closed`, `created`, `description`, `ephemeral`, `id` …(+12) |
+| `quickstart` | 0 | — |
 | `ready` | 39 | — |
 | `rename` | 12 | — |
 | `rename-prefix` | 14 | — |
@@ -123,6 +124,10 @@ _Generated: 2026-03-11 06:18_
 
 ### `q`
 - Missing flags in sq (16): `--actor`, `--db`, `--dolt-auto-commit`, `--help`, `--labels`, `--profile`, `--quiet`, `--readonly`, `--sandbox`, `--verbose`, `-h`, `-l`, `-p`, `-q`, `-t`, `-v`
+- Missing subcommands in sq: none
+
+### `quickstart`
+- Missing flags in sq (0): none
 - Missing subcommands in sq: none
 
 ### `query`

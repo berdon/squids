@@ -208,4 +208,9 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("label", "add", human2, "human", "--json")
 	mustOK("human", "dismiss", human2, "--reason", "n/a", "--json")
 	mustFail("human", "wat")
+
+	mustOK("quickstart")
+	mustOK("quickstart", "--help")
+	mustOK("quickstart", "--actor", "tester")
+	mustFail("quickstart", "--wat")
 }
