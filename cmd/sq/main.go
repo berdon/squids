@@ -47,6 +47,7 @@ func usage() {
 	fmt.Println("  update  Update a task")
 	fmt.Println("  close   Close a task")
 	fmt.Println("  reopen  Reopen a task")
+	fmt.Println("  delete  Delete a task")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
@@ -320,6 +321,30 @@ func cmdReopen(args []string) int {
 	return printJSON(t)
 }
 
+func cmdDelete(args []string) int {
+	if len(args) == 0 {
+		return failUsage("id is required")
+	}
+	id := args[0]
+	for i := 1; i < len(args); i++ {
+		if args[i] == "--json" || args[i] == "--force" {
+			continue
+		}
+		if strings.HasPrefix(args[i], "-") {
+			return failUsage("unknown flag: " + args[i])
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	if err := store.DeleteTask(db, id); err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"id": id, "deleted": true})
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -346,6 +371,8 @@ func main() {
 		os.Exit(cmdClose(os.Args[2:]))
 	case "reopen":
 		os.Exit(cmdReopen(os.Args[2:]))
+	case "delete":
+		os.Exit(cmdDelete(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		usage()

@@ -432,3 +432,18 @@ func ReopenTask(db *sql.DB, id string) (*Task, error) {
 	}
 	return ShowTask(db, id)
 }
+
+func DeleteTask(db *sql.DB, id string) error {
+	res, err := db.Exec(`DELETE FROM tasks WHERE id=?`, id)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("issue not found: %s", id)
+	}
+	return nil
+}

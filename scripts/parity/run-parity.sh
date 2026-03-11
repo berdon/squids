@@ -122,13 +122,25 @@ assert_json_status "$REOPEN_JSON" "open"
 SHOW_REOPENED="$(run_target "show $TASK_ID --json")"
 assert_json_status "$SHOW_REOPENED" "open"
 
-# 10) claim path
+# 10) delete path
+DELETE_JSON="$(run_target "delete $SECOND_ID --force --json")"
+assert_contains "$DELETE_JSON" "deleted"
+set +e
+SHOW_DELETED_OUT="$(run_target "show $SECOND_ID --json" 2>&1)"
+SHOW_DELETED_CODE=$?
+set -e
+if [[ $SHOW_DELETED_CODE -eq 0 ]]; then
+  echo "ASSERT FAILED: expected deleted issue show to fail"
+  exit 1
+fi
+
+# 11) claim path
 THIRD_JSON="$(run_target "create 'Claim me' --type task --priority 2 --json")"
 THIRD_ID="$(json_field "$THIRD_JSON" "id")"
 CLAIM_JSON="$(run_target "update $THIRD_ID --claim --json")"
 assert_contains "$CLAIM_JSON" "in_progress"
 
-# 10) negative path: missing issue show should fail
+# 12) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
 MISSING_CODE=$?
