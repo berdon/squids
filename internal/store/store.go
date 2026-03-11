@@ -34,6 +34,11 @@ type Task struct {
 	ClosedAt    string            `json:"closed_at,omitempty"`
 }
 
+type DBWrap struct {
+	Path string
+	DB   *sql.DB
+}
+
 type CreateInput struct {
 	Title       string
 	Description string
@@ -272,10 +277,25 @@ func UpdateTask(db *sql.DB, id string, in UpdateInput) (*Task, error) {
 			t.Metadata[k] = v
 		}
 	}
+
+	if upstream := strings.TrimSpace(t.Metadata["upstream"]); upstream != "" {
+		exists := false
+		for _, d := range t.Deps {
+			if d == upstream {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			t.Deps = append(t.Deps, upstream)
+		}
+	}
+
 	labelsRaw, _ := json.Marshal(t.Labels)
+	depsRaw, _ := json.Marshal(t.Deps)
 	metaRaw, _ := json.Marshal(t.Metadata)
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err = db.Exec(`UPDATE tasks SET status=?,assignee=?,labels_json=?,metadata_json=?,updated_at=? WHERE id=?`, t.Status, t.Assignee, string(labelsRaw), string(metaRaw), now, id)
+	_, err = db.Exec(`UPDATE tasks SET status=?,assignee=?,labels_json=?,deps_json=?,metadata_json=?,updated_at=? WHERE id=?`, t.Status, t.Assignee, string(labelsRaw), string(depsRaw), string(metaRaw), now, id)
 	if err != nil {
 		return nil, err
 	}
