@@ -19,7 +19,7 @@ Goals:
 ### Option 1: Build from source (recommended today)
 
 ```bash
-git clone <your-squids-repo-url>
+git clone https://github.com/berdon/squids.git
 cd squids
 make build
 ./bin/sq --help
@@ -28,7 +28,7 @@ make build
 ### Option 2: Go install
 
 ```bash
-go install gitea/auhanson/squids/cmd/sq@latest
+go install github.com/berdon/squids/cmd/sq@latest
 sq --help
 ```
 
