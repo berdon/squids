@@ -343,6 +343,119 @@ func TestListHookStatuses_DefaultOutsideGit(t *testing.T) {
 	}
 }
 
+func TestRunChainedHook_NoopWhenNoGit(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if code := runChainedHook("pre-commit", nil); code != 0 {
+		t.Fatalf("expected 0 outside git, got %d", code)
+	}
+}
+
+func TestRunChainedHook_ExecutesOldHook(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v (%s)", err, string(out))
+	}
+	hooksDir := filepath.Join(wd, ".git", "hooks")
+	oldHook := filepath.Join(hooksDir, "pre-commit.old")
+	mark := filepath.Join(wd, "ran.txt")
+	script := "#!/usr/bin/env sh\necho ran > " + mark + "\nexit 0\n"
+	if err := os.WriteFile(oldHook, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if code := runChainedHook("pre-commit", nil); code != 0 {
+		t.Fatalf("expected 0 from chained hook, got %d", code)
+	}
+	if _, err := os.Stat(mark); err != nil {
+		t.Fatalf("expected marker file from old hook: %v", err)
+	}
+}
+
+func TestRunChainedHook_NonExecutableSkips(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v (%s)", err, string(out))
+	}
+	hooksDir := filepath.Join(wd, ".git", "hooks")
+	oldHook := filepath.Join(hooksDir, "pre-commit.old")
+	if err := os.WriteFile(oldHook, []byte("#!/usr/bin/env sh\nexit 0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code := runChainedHook("pre-commit", nil); code != 0 {
+		t.Fatalf("expected 0 skip for non-exec old hook, got %d", code)
+	}
+}
+
+func TestRunChainedHook_PropagatesExitCode(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v (%s)", err, string(out))
+	}
+	hooksDir := filepath.Join(wd, ".git", "hooks")
+	oldHook := filepath.Join(hooksDir, "pre-commit.old")
+	if err := os.WriteFile(oldHook, []byte("#!/usr/bin/env sh\nexit 7\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if code := runChainedHook("pre-commit", nil); code != 7 {
+		t.Fatalf("expected exit 7 propagated, got %d", code)
+	}
+}
+
+func TestRunChainedHook_SkipsManagedOldHook(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v (%s)", err, string(out))
+	}
+	hooksDir := filepath.Join(wd, ".git", "hooks")
+	oldHook := filepath.Join(hooksDir, "pre-commit.old")
+	content := "#!/usr/bin/env sh\n" + generateHookSection("pre-commit")
+	if err := os.WriteFile(oldHook, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if code := runChainedHook("pre-commit", nil); code != 0 {
+		t.Fatalf("expected skip(0) for managed old hook, got %d", code)
+	}
+}
+
+func TestRunHookDispatcher_Unknown(t *testing.T) {
+	if code := runHookDispatcher("unknown-hook", nil); code != 2 {
+		t.Fatalf("expected unknown code 2, got %d", code)
+	}
+}
+
+func TestRunHookDispatcher_Known(t *testing.T) {
+	// outside git these should all no-op successfully
+	for _, h := range []string{"pre-commit", "post-merge", "pre-push", "post-checkout", "prepare-commit-msg"} {
+		if code := runHookDispatcher(h, nil); code != 0 {
+			t.Fatalf("expected 0 for %s, got %d", h, code)
+		}
+	}
+}
+
 func TestRunHookDispatcher_KnownHooks(t *testing.T) {
 	for _, h := range managedHookNames {
 		if code := runHookDispatcher(h, []string{"arg1"}); code != 0 {

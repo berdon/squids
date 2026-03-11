@@ -236,8 +236,47 @@ func runHookDispatcher(hookName string, hookArgs []string) int {
 	}
 }
 
-func runPreCommitHook(_ []string) int        { return 0 }
-func runPostMergeHook(_ []string) int        { return 0 }
-func runPrePushHook(_ []string) int          { return 0 }
-func runPostCheckoutHook(_ []string) int     { return 0 }
-func runPrepareCommitMsgHook(_ []string) int { return 0 }
+func runChainedHook(hookName string, hookArgs []string) int {
+	hooksDir, err := resolveHooksDir(false, false)
+	if err != nil {
+		return 0
+	}
+	oldPath := filepath.Join(hooksDir, hookName+".old")
+	info, err := os.Stat(oldPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0
+		}
+		return 1
+	}
+	if info.Mode().Perm()&0o111 == 0 {
+		return 0
+	}
+	b, err := os.ReadFile(oldPath)
+	if err == nil {
+		s := string(b)
+		if strings.Contains(s, hookSectionBeginPrefix) || strings.Contains(s, "sq hooks run ") {
+			// old hook is also sq-managed; skip to avoid recursion
+			return 0
+		}
+	}
+	cmd := exec.Command(oldPath, hookArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	if err := cmd.Run(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return ee.ExitCode()
+		}
+		return 1
+	}
+	return 0
+}
+
+func runPreCommitHook(args []string) int    { return runChainedHook("pre-commit", args) }
+func runPostMergeHook(args []string) int    { return runChainedHook("post-merge", args) }
+func runPrePushHook(args []string) int      { return runChainedHook("pre-push", args) }
+func runPostCheckoutHook(args []string) int { return runChainedHook("post-checkout", args) }
+func runPrepareCommitMsgHook(args []string) int {
+	return runChainedHook("prepare-commit-msg", args)
+}
