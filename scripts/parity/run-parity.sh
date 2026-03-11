@@ -284,6 +284,12 @@ assert_contains "$COUNT_OPEN_JSON" "count"
 STATUS_JSON="$(run_target "status --json")"
 assert_contains "$STATUS_JSON" "open"
 
+# 14b) version parity
+VERSION_TXT="$(run_target "version")"
+assert_contains "$VERSION_TXT" "version"
+VERSION_JSON="$(run_target "version --json")"
+assert_contains "$VERSION_JSON" "version"
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
