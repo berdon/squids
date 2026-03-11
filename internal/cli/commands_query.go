@@ -575,12 +575,21 @@ func cmdHooks(args []string) int {
 	}
 	sub := args[0]
 	jsonOut := false
+	force := false
+	shared := false
+	beadsHooks := false
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--json":
 			jsonOut = true
-		case "--help", "-h", "--force", "--shared", "--chain", "--beads", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--force":
+			force = true
+		case "--shared":
+			shared = true
+		case "--beads":
+			beadsHooks = true
+		case "--help", "-h", "--chain", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (mostly no-op)
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 < len(args) {
@@ -596,8 +605,13 @@ func cmdHooks(args []string) int {
 	switch sub {
 	case "list":
 		status["hooks"] = []map[string]any{{"name": "pre-commit", "installed": false}, {"name": "post-merge", "installed": false}, {"name": "pre-push", "installed": false}, {"name": "post-checkout", "installed": false}, {"name": "prepare-commit-msg", "installed": false}}
-	case "install", "uninstall":
-		status["message"] = "hooks " + sub + " complete"
+	case "install":
+		if err := installHooks(force, shared, beadsHooks); err != nil {
+			return failRuntime(err.Error())
+		}
+		status["message"] = "hooks install complete"
+	case "uninstall":
+		status["message"] = "hooks uninstall complete"
 	case "run":
 		if len(args) < 2 {
 			return failUsage("usage: sq hooks run <hook-name> [args...]")

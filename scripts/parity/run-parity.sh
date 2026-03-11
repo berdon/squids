@@ -354,7 +354,7 @@ assert_contains "$HISTORY_OUT" "requires Dolt backend"
 # 14h) hooks parity
 HOOKS_LIST_JSON="$(run_target "hooks list --json")"
 assert_contains "$HOOKS_LIST_JSON" "hooks"
-run_target "hooks install --json" >/dev/null
+run_target "hooks install --shared --json" >/dev/null
 run_target "hooks uninstall --json" >/dev/null
 run_target "hooks run pre-commit --json" >/dev/null
 
