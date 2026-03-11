@@ -31,6 +31,14 @@ This repo starts with a black-box parity suite that can run against an existing 
 TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 ```
 
+### Dual-target compatibility run (beads vs sq)
+
+```bash
+./scripts/parity/compat-runner.sh
+```
+
+Outputs logs and deltas under `.parity-results/`.
+
 ### Optional target args
 
 If your target needs global args before the command:
