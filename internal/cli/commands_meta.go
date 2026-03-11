@@ -1,0 +1,371 @@
+package cli
+
+import (
+	"os"
+	"strconv"
+	"strings"
+
+	"gitea/auhanson/squids/internal/store"
+)
+
+func cmdLabel(args []string) int {
+	if len(args) == 0 {
+		return failUsage("label subcommand required")
+	}
+	sub := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	switch sub {
+	case "add":
+		if len(args) < 3 {
+			return failUsage("usage: sq label add <id> <label> [--json]")
+		}
+		t, err := store.AddLabel(db, args[1], args[2])
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	case "remove":
+		if len(args) < 3 {
+			return failUsage("usage: sq label remove <id> <label> [--json]")
+		}
+		t, err := store.RemoveLabel(db, args[1], args[2])
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	case "list":
+		if len(args) < 2 {
+			return failUsage("usage: sq label list <id> [--json]")
+		}
+		labels, err := store.ListLabels(db, args[1])
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(labels)
+	case "list-all":
+		labels, err := store.ListAllLabels(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(labels)
+	default:
+		return failUsage("unknown label subcommand: " + sub)
+	}
+}
+
+func cmdDep(args []string) int {
+	if len(args) == 0 {
+		return failUsage("dep subcommand required")
+	}
+	sub := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	switch sub {
+	case "add":
+		if len(args) < 3 {
+			return failUsage("usage: sq dep add <issue-id> <depends-on-id> [--json]")
+		}
+		if err := store.AddDependency(db, args[1], args[2], "blocks"); err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "type": "blocks"})
+	case "remove", "rm":
+		if len(args) < 3 {
+			return failUsage("usage: sq dep remove <issue-id> <depends-on-id> [--json]")
+		}
+		if err := store.RemoveDependency(db, args[1], args[2]); err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "removed": true})
+	case "list":
+		if len(args) < 2 {
+			return failUsage("usage: sq dep list <issue-id> [--json]")
+		}
+		deps, err := store.ListDependencies(db, args[1])
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(deps)
+	default:
+		return failUsage("unknown dep subcommand: " + sub)
+	}
+}
+
+func cmdComments(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq comments <issue-id> [--json] OR sq comments add <issue-id> <text> [--json]")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	if args[0] == "add" {
+		if len(args) < 3 {
+			return failUsage("usage: sq comments add <issue-id> <text> [--json]")
+		}
+		issueID := args[1]
+		body := args[2]
+		author := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+		c, err := store.AddComment(db, issueID, author, body)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(c)
+	}
+
+	issueID := args[0]
+	comments, err := store.ListComments(db, issueID)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(comments)
+}
+
+func cmdTodo(args []string) int {
+	sub := "list"
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		sub = args[0]
+		args = args[1:]
+	}
+
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	switch sub {
+	case "list":
+		all, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		tasks := make([]store.Task, 0)
+		for _, t := range all {
+			if t.IssueType == "task" && t.Status == "open" {
+				tasks = append(tasks, t)
+			}
+		}
+		if len(tasks) == 0 {
+			return printJSON(nil)
+		}
+		return printJSON(tasks)
+	case "add":
+		if len(args) == 0 {
+			return failUsage("usage: sq todo add <title> [--priority N] [--description TEXT] [--json]")
+		}
+		in := store.CreateInput{Title: args[0], IssueType: "task", Priority: 2}
+		creator := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+		if creator == "" {
+			creator = strings.TrimSpace(os.Getenv("USER"))
+		}
+		in.Creator = creator
+		for i := 1; i < len(args); i++ {
+			switch args[i] {
+			case "--priority":
+				if i+1 < len(args) {
+					p, err := strconv.Atoi(args[i+1])
+					if err != nil {
+						return failUsage("invalid --priority")
+					}
+					in.Priority = p
+					i++
+				}
+			case "--description":
+				if i+1 < len(args) {
+					in.Description = args[i+1]
+					i++
+				}
+			case "--json":
+				// accepted, no-op
+			default:
+				if strings.HasPrefix(args[i], "-") {
+					return failUsage("unknown flag: " + args[i])
+				}
+			}
+		}
+		t, err := store.CreateTask(db, in)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	case "done":
+		if len(args) == 0 {
+			return failUsage("usage: sq todo done <id> [--reason TEXT] [--json]")
+		}
+		id := args[0]
+		reason := "Completed"
+		for i := 1; i < len(args); i++ {
+			switch args[i] {
+			case "--reason":
+				if i+1 < len(args) {
+					reason = args[i+1]
+					i++
+				}
+			case "--json":
+				// accepted, no-op
+			default:
+				if strings.HasPrefix(args[i], "-") {
+					return failUsage("unknown flag: " + args[i])
+				}
+			}
+		}
+		t, err := store.CloseTask(db, id, reason)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	default:
+		return failUsage("unknown todo subcommand: " + sub)
+	}
+}
+
+func cmdChildren(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq children <parent-id> [--json]")
+	}
+	parentID := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.ListChildren(db, parentID)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
+func cmdBlocked(args []string) int {
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--json":
+			continue
+		case "--parent":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.ListBlocked(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
+func cmdDuplicate(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq duplicate <id> --of <canonical-id> [--json]")
+	}
+	id := args[0]
+	canonical := ""
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--of":
+			if i+1 < len(args) {
+				canonical = args[i+1]
+				i++
+			}
+		case "--json":
+			// accepted
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	if canonical == "" {
+		return failUsage("--of is required")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	if err := store.AddDependency(db, id, canonical, "duplicates"); err != nil {
+		return failRuntime(err.Error())
+	}
+	if _, err := store.CloseTask(db, id, "Duplicate of "+canonical); err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"canonical": canonical, "duplicate": id, "status": "closed"})
+}
+
+func cmdSupersede(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq supersede <id> --with <replacement-id> [--json]")
+	}
+	id := args[0]
+	replacement := ""
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--with":
+			if i+1 < len(args) {
+				replacement = args[i+1]
+				i++
+			}
+		case "--json":
+			// accepted
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	if replacement == "" {
+		return failUsage("--with is required")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	if err := store.AddDependency(db, id, replacement, "supersedes"); err != nil {
+		return failRuntime(err.Error())
+	}
+	if _, err := store.CloseTask(db, id, "Superseded by "+replacement); err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"replacement": replacement, "superseded": id, "status": "closed"})
+}
+
+func cmdTypes(args []string) int {
+	for _, a := range args {
+		if a == "--json" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+	}
+	return printJSON(map[string]any{"core_types": []map[string]string{
+		{"name": "task", "description": "General work item (default)"},
+		{"name": "bug", "description": "Bug report or defect"},
+		{"name": "feature", "description": "New feature or enhancement"},
+		{"name": "chore", "description": "Maintenance or housekeeping"},
+		{"name": "epic", "description": "Large body of work spanning multiple issues"},
+		{"name": "decision", "description": "Architecture decision record (ADR)"},
+	}})
+}
