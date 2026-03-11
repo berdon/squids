@@ -367,3 +367,149 @@ func cmdInfo(args []string) int {
 	}
 	return 0
 }
+
+func cmdHuman(args []string) int {
+	if len(args) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "sq human: focused helpers")
+		_, _ = fmt.Fprintln(os.Stdout, "  human list")
+		_, _ = fmt.Fprintln(os.Stdout, "  human respond <id> --response <text>")
+		_, _ = fmt.Fprintln(os.Stdout, "  human dismiss <id> [--reason <text>]")
+		_, _ = fmt.Fprintln(os.Stdout, "  human stats")
+		return 0
+	}
+	sub := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	hasHuman := func(id string) bool {
+		labels, err := store.ListLabels(db, id)
+		if err != nil {
+			return false
+		}
+		for _, l := range labels {
+			if l == "human" {
+				return true
+			}
+		}
+		return false
+	}
+	switch sub {
+	case "list":
+		status := ""
+		jsonOut := false
+		for i := 1; i < len(args); i++ {
+			a := args[i]
+			switch a {
+			case "--status", "-s":
+				if i+1 < len(args) {
+					status = args[i+1]
+					i++
+				}
+			case "--json":
+				jsonOut = true
+			default:
+				if strings.HasPrefix(a, "-") {
+					return failUsage("unknown flag: " + a)
+				}
+			}
+		}
+		all, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		out := make([]store.Task, 0)
+		for _, t := range all {
+			if status != "" && t.Status != status {
+				continue
+			}
+			if hasHuman(t.ID) {
+				out = append(out, t)
+			}
+		}
+		if jsonOut {
+			return printJSON(out)
+		}
+		return printJSON(out)
+	case "respond":
+		if len(args) < 2 {
+			return failUsage("usage: sq human respond <id> --response <text>")
+		}
+		id := args[1]
+		response := ""
+		for i := 2; i < len(args); i++ {
+			a := args[i]
+			switch a {
+			case "--response", "-r":
+				if i+1 < len(args) {
+					response = args[i+1]
+					i++
+				}
+			case "--json":
+			default:
+				if strings.HasPrefix(a, "-") {
+					return failUsage("unknown flag: " + a)
+				}
+			}
+		}
+		if strings.TrimSpace(response) == "" {
+			return failUsage("--response is required")
+		}
+		_, _ = store.AddComment(db, id, strings.TrimSpace(os.Getenv("USER")), "Response: "+response)
+		t, err := store.CloseTask(db, id, "Responded")
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	case "dismiss":
+		if len(args) < 2 {
+			return failUsage("usage: sq human dismiss <id> [--reason <text>]")
+		}
+		id := args[1]
+		reason := "Dismissed"
+		for i := 2; i < len(args); i++ {
+			a := args[i]
+			switch a {
+			case "--reason":
+				if i+1 < len(args) {
+					reason = "Dismissed: " + args[i+1]
+					i++
+				}
+			case "--json":
+			default:
+				if strings.HasPrefix(a, "-") {
+					return failUsage("unknown flag: " + a)
+				}
+			}
+		}
+		t, err := store.CloseTask(db, id, reason)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	case "stats":
+		all, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		total, pending, closed, dismissed := 0, 0, 0, 0
+		for _, t := range all {
+			if !hasHuman(t.ID) {
+				continue
+			}
+			total++
+			if t.Status == "closed" {
+				closed++
+				if strings.Contains(strings.ToLower(t.CloseReason), "dismiss") {
+					dismissed++
+				}
+			} else {
+				pending++
+			}
+		}
+		return printJSON(map[string]int{"total": total, "pending": pending, "responded": closed - dismissed, "dismissed": dismissed})
+	default:
+		return failUsage("unknown human subcommand: " + sub)
+	}
+}

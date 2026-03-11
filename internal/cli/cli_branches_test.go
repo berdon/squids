@@ -196,4 +196,16 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("info", "--whats-new", "--json")
 	mustOK("info", "--thanks")
 	mustOK("info", "--help")
+
+	humanID := firstID(t, mustOK("create", "Human task", "--json"))
+	mustOK("label", "add", humanID, "human", "--json")
+	mustOK("human")
+	mustOK("human", "list", "--json")
+	mustOK("human", "stats")
+	mustFail("human", "respond", humanID)
+	mustOK("human", "respond", humanID, "--response", "done", "--json")
+	human2 := firstID(t, mustOK("create", "Human task 2", "--json"))
+	mustOK("label", "add", human2, "human", "--json")
+	mustOK("human", "dismiss", human2, "--reason", "n/a", "--json")
+	mustFail("human", "wat")
 }

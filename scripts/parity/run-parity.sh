@@ -326,6 +326,15 @@ run_target "info --whats-new" >/dev/null
 run_target "info --whats-new --json" >/dev/null
 run_target "info --thanks" >/dev/null
 
+# 14e) human parity
+HUMAN_TASK_JSON="$(run_target "create 'Human-needed' --type task --priority 2 --json")"
+HUMAN_TASK_ID="$(json_field "$HUMAN_TASK_JSON" "id")"
+run_target "label add $HUMAN_TASK_ID human --json" >/dev/null
+HUMAN_LIST_JSON="$(run_target "human list --json")"
+assert_contains "$HUMAN_LIST_JSON" "$HUMAN_TASK_ID"
+run_target "human stats" >/dev/null
+run_target "human respond $HUMAN_TASK_ID --response acknowledged --json" >/dev/null
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"

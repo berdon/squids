@@ -75,6 +75,7 @@ func usage() {
 	fmt.Println("  version Show CLI version")
 	fmt.Println("  where   Show active sq storage location")
 	fmt.Println("  info    Show database information")
+	fmt.Println("  human   Human-focused command group")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {

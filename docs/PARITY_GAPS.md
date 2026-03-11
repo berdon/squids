@@ -1,16 +1,16 @@
 # bd ↔ sq Deep Parity Matrix (Command/Flag/Subcommand Gaps)
 
-_Generated: 2026-03-11 06:16_
+_Generated: 2026-03-11 06:18_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **33**
-- Shared commands: **33**
-- Missing in sq: **60**
+- sq commands: **34**
+- Shared commands: **34**
+- Missing in sq: **59**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `history`, `hooks`, `human`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `history`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -27,6 +27,7 @@ _Generated: 2026-03-11 06:16_
 | `dep` | 15 | `cycles`, `relate`, `tree`, `unrelate` |
 | `duplicate` | 12 | — |
 | `help` | 0 | — |
+| `human` | 0 | — |
 | `info` | 0 | — |
 | `init` | 29 | — |
 | `label` | 13 | `propagate` |
@@ -93,6 +94,10 @@ _Generated: 2026-03-11 06:16_
 - Missing subcommands in sq: none
 
 ### `help`
+- Missing flags in sq (0): none
+- Missing subcommands in sq: none
+
+### `human`
 - Missing flags in sq (0): none
 - Missing subcommands in sq: none
 
