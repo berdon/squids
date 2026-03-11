@@ -174,7 +174,20 @@ THIRD_ID="$(json_field "$THIRD_JSON" "id")"
 CLAIM_JSON="$(run_target "update $THIRD_ID --claim --json")"
 assert_contains "$CLAIM_JSON" "in_progress"
 
-# 12) negative path: missing issue show should fail
+# 12) query command parity
+QUERY_JSON="$(run_target "query \"status=open AND priority<=2\" --json")"
+assert_contains "$QUERY_JSON" "$TASK_ID"
+set +e
+BAD_QUERY_OUT="$(run_target "query \"madeupfield=abc\" --json" 2>&1)"
+BAD_QUERY_CODE=$?
+set -e
+if [[ $BAD_QUERY_CODE -eq 0 ]]; then
+  echo "ASSERT FAILED: expected bad query to fail"
+  exit 1
+fi
+assert_contains "$BAD_QUERY_OUT" "unknown"
+
+# 13) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
 MISSING_CODE=$?
@@ -185,7 +198,7 @@ if [[ $MISSING_CODE -eq 0 ]]; then
 fi
 assert_contains "$MISSING_OUT" "not"
 
-# 10) unknown flag should fail with usage-like error
+# 14) unknown flag should fail with usage-like error
 set +e
 BAD_FLAG_OUT="$(run_target "create 'x' --bogus-flag --json" 2>&1)"
 BAD_FLAG_CODE=$?

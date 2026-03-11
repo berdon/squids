@@ -637,3 +637,84 @@ func ListComments(db *sql.DB, issueID string) ([]Comment, error) {
 	}
 	return out, nil
 }
+
+func QueryTasks(db *sql.DB, expr string) ([]Task, error) {
+	expr = strings.TrimSpace(expr)
+	if expr == "" {
+		return nil, errors.New("query expression required")
+	}
+	tasks, err := ListTasks(db)
+	if err != nil {
+		return nil, err
+	}
+
+	parts := strings.Split(expr, "AND")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+
+	out := make([]Task, 0)
+	for _, t := range tasks {
+		ok := true
+		for _, p := range parts {
+			if p == "" {
+				continue
+			}
+			switch {
+			case strings.Contains(p, ">="):
+				kv := strings.SplitN(p, ">=", 2)
+				if strings.TrimSpace(strings.ToLower(kv[0])) != "priority" {
+					return nil, errors.New("only priority comparisons are supported")
+				}
+				n, _ := strconv.Atoi(strings.TrimSpace(kv[1]))
+				ok = ok && t.Priority >= n
+			case strings.Contains(p, "<="):
+				kv := strings.SplitN(p, "<=", 2)
+				if strings.TrimSpace(strings.ToLower(kv[0])) != "priority" {
+					return nil, errors.New("only priority comparisons are supported")
+				}
+				n, _ := strconv.Atoi(strings.TrimSpace(kv[1]))
+				ok = ok && t.Priority <= n
+			case strings.Contains(p, ">"):
+				kv := strings.SplitN(p, ">", 2)
+				if strings.TrimSpace(strings.ToLower(kv[0])) != "priority" {
+					return nil, errors.New("only priority comparisons are supported")
+				}
+				n, _ := strconv.Atoi(strings.TrimSpace(kv[1]))
+				ok = ok && t.Priority > n
+			case strings.Contains(p, "<"):
+				kv := strings.SplitN(p, "<", 2)
+				if strings.TrimSpace(strings.ToLower(kv[0])) != "priority" {
+					return nil, errors.New("only priority comparisons are supported")
+				}
+				n, _ := strconv.Atoi(strings.TrimSpace(kv[1]))
+				ok = ok && t.Priority < n
+			case strings.Contains(p, "="):
+				kv := strings.SplitN(p, "=", 2)
+				k := strings.TrimSpace(strings.ToLower(kv[0]))
+				v := strings.TrimSpace(kv[1])
+				switch k {
+				case "status":
+					ok = ok && strings.EqualFold(t.Status, v)
+				case "type":
+					ok = ok && strings.EqualFold(t.IssueType, v)
+				case "assignee":
+					ok = ok && strings.EqualFold(t.Assignee, v)
+				case "title":
+					ok = ok && strings.Contains(strings.ToLower(t.Title), strings.ToLower(v))
+				default:
+					return nil, fmt.Errorf("unknown field: %s", k)
+				}
+			default:
+				return nil, fmt.Errorf("invalid query clause: %s", p)
+			}
+			if !ok {
+				break
+			}
+		}
+		if ok {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
