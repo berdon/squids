@@ -541,3 +541,29 @@ func cmdQuickstart(args []string) int {
 	_, _ = fmt.Fprintln(os.Stdout, "  sq close <id> --reason \"Done\" --json")
 	return 0
 }
+
+func cmdHistory(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq history <id> [--limit N] [--json]")
+	}
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--limit":
+			if i+1 < len(args) {
+				i++
+			}
+		case "--json", "--help", "-h", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op for unsupported backend)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("history requires Dolt backend; sq uses sqlite backend")
+}

@@ -1,16 +1,16 @@
 # bd ↔ sq Deep Parity Matrix (Command/Flag/Subcommand Gaps)
 
-_Generated: 2026-03-11 06:26_
+_Generated: 2026-03-11 06:31_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **35**
-- Shared commands: **35**
-- Missing in sq: **58**
+- sq commands: **36**
+- Shared commands: **36**
+- Missing in sq: **57**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `history`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -27,6 +27,7 @@ _Generated: 2026-03-11 06:26_
 | `dep` | 15 | `cycles`, `relate`, `tree`, `unrelate` |
 | `duplicate` | 12 | — |
 | `help` | 0 | — |
+| `history` | 0 | — |
 | `human` | 0 | — |
 | `info` | 0 | — |
 | `init` | 29 | — |
@@ -97,6 +98,11 @@ _Generated: 2026-03-11 06:26_
 ### `help`
 - Missing flags in sq (0): none
 - Missing subcommands in sq: none
+
+### `history`
+- Missing flags in sq (0): none
+- Missing subcommands in sq: none
+- Note: sq returns an explicit runtime error because full history requires Dolt backend (out-of-scope for sqlite-only sq).
 
 ### `human`
 - Missing flags in sq (0): none

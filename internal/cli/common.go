@@ -77,6 +77,7 @@ func usage() {
 	fmt.Println("  info    Show database information")
 	fmt.Println("  human   Human-focused command group")
 	fmt.Println("  quickstart Show quick start guide")
+	fmt.Println("  history  Show issue history (not supported on sq sqlite backend)")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {

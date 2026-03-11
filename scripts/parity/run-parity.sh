@@ -340,6 +340,17 @@ QUICKSTART_TXT="$(run_target "quickstart")"
 assert_contains "$QUICKSTART_TXT" "quickstart"
 run_target "quickstart --actor tester" >/dev/null
 
+# 14g) history parity (out-of-scope on sqlite backend)
+set +e
+HISTORY_OUT="$(run_target "history $TASK_ID --limit 5 --json" 2>&1)"
+HISTORY_CODE=$?
+set -e
+if [[ $HISTORY_CODE -eq 0 ]]; then
+  echo "ASSERT FAILED: expected history to fail on sqlite backend"
+  exit 1
+fi
+assert_contains "$HISTORY_OUT" "requires Dolt backend"
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
