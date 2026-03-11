@@ -51,6 +51,7 @@ func usage() {
 	fmt.Println("  label   Manage labels")
 	fmt.Println("  dep     Manage dependencies")
 	fmt.Println("  comments Manage comments")
+	fmt.Println("  todo    Manage TODO items")
 	fmt.Println("  query   Query tasks")
 	fmt.Println("  search  Search tasks")
 	fmt.Println("  count   Count tasks")
@@ -365,23 +366,37 @@ func cmdLabel(args []string) int {
 
 	switch sub {
 	case "add":
-		if len(args) < 3 { return failUsage("usage: sq label add <id> <label> [--json]") }
+		if len(args) < 3 {
+			return failUsage("usage: sq label add <id> <label> [--json]")
+		}
 		t, err := store.AddLabel(db, args[1], args[2])
-		if err != nil { return failRuntime(err.Error()) }
+		if err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(t)
 	case "remove":
-		if len(args) < 3 { return failUsage("usage: sq label remove <id> <label> [--json]") }
+		if len(args) < 3 {
+			return failUsage("usage: sq label remove <id> <label> [--json]")
+		}
 		t, err := store.RemoveLabel(db, args[1], args[2])
-		if err != nil { return failRuntime(err.Error()) }
+		if err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(t)
 	case "list":
-		if len(args) < 2 { return failUsage("usage: sq label list <id> [--json]") }
+		if len(args) < 2 {
+			return failUsage("usage: sq label list <id> [--json]")
+		}
 		labels, err := store.ListLabels(db, args[1])
-		if err != nil { return failRuntime(err.Error()) }
+		if err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(labels)
 	case "list-all":
 		labels, err := store.ListAllLabels(db)
-		if err != nil { return failRuntime(err.Error()) }
+		if err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(labels)
 	default:
 		return failUsage("unknown label subcommand: " + sub)
@@ -401,17 +416,29 @@ func cmdDep(args []string) int {
 
 	switch sub {
 	case "add":
-		if len(args) < 3 { return failUsage("usage: sq dep add <issue-id> <depends-on-id> [--json]") }
-		if err := store.AddDependency(db, args[1], args[2], "blocks"); err != nil { return failRuntime(err.Error()) }
+		if len(args) < 3 {
+			return failUsage("usage: sq dep add <issue-id> <depends-on-id> [--json]")
+		}
+		if err := store.AddDependency(db, args[1], args[2], "blocks"); err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "type": "blocks"})
 	case "remove", "rm":
-		if len(args) < 3 { return failUsage("usage: sq dep remove <issue-id> <depends-on-id> [--json]") }
-		if err := store.RemoveDependency(db, args[1], args[2]); err != nil { return failRuntime(err.Error()) }
+		if len(args) < 3 {
+			return failUsage("usage: sq dep remove <issue-id> <depends-on-id> [--json]")
+		}
+		if err := store.RemoveDependency(db, args[1], args[2]); err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "removed": true})
 	case "list":
-		if len(args) < 2 { return failUsage("usage: sq dep list <issue-id> [--json]") }
+		if len(args) < 2 {
+			return failUsage("usage: sq dep list <issue-id> [--json]")
+		}
 		deps, err := store.ListDependencies(db, args[1])
-		if err != nil { return failRuntime(err.Error()) }
+		if err != nil {
+			return failRuntime(err.Error())
+		}
 		return printJSON(deps)
 	default:
 		return failUsage("unknown dep subcommand: " + sub)
@@ -448,6 +475,105 @@ func cmdComments(args []string) int {
 		return failRuntime(err.Error())
 	}
 	return printJSON(comments)
+}
+
+func cmdTodo(args []string) int {
+	sub := "list"
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		sub = args[0]
+		args = args[1:]
+	}
+
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	switch sub {
+	case "list":
+		all, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		tasks := make([]store.Task, 0)
+		for _, t := range all {
+			if t.IssueType == "task" && t.Status == "open" {
+				tasks = append(tasks, t)
+			}
+		}
+		if len(tasks) == 0 {
+			return printJSON(nil)
+		}
+		return printJSON(tasks)
+	case "add":
+		if len(args) == 0 {
+			return failUsage("usage: sq todo add <title> [--priority N] [--description TEXT] [--json]")
+		}
+		in := store.CreateInput{Title: args[0], IssueType: "task", Priority: 2}
+		creator := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+		if creator == "" {
+			creator = strings.TrimSpace(os.Getenv("USER"))
+		}
+		in.Creator = creator
+		for i := 1; i < len(args); i++ {
+			switch args[i] {
+			case "--priority":
+				if i+1 < len(args) {
+					p, err := strconv.Atoi(args[i+1])
+					if err != nil {
+						return failUsage("invalid --priority")
+					}
+					in.Priority = p
+					i++
+				}
+			case "--description":
+				if i+1 < len(args) {
+					in.Description = args[i+1]
+					i++
+				}
+			case "--json":
+				// accepted, no-op
+			default:
+				if strings.HasPrefix(args[i], "-") {
+					return failUsage("unknown flag: " + args[i])
+				}
+			}
+		}
+		t, err := store.CreateTask(db, in)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	case "done":
+		if len(args) == 0 {
+			return failUsage("usage: sq todo done <id> [--reason TEXT] [--json]")
+		}
+		id := args[0]
+		reason := "Completed"
+		for i := 1; i < len(args); i++ {
+			switch args[i] {
+			case "--reason":
+				if i+1 < len(args) {
+					reason = args[i+1]
+					i++
+				}
+			case "--json":
+				// accepted, no-op
+			default:
+				if strings.HasPrefix(args[i], "-") {
+					return failUsage("unknown flag: " + args[i])
+				}
+			}
+		}
+		t, err := store.CloseTask(db, id, reason)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		return printJSON(t)
+	default:
+		return failUsage("unknown todo subcommand: " + sub)
+	}
 }
 
 func cmdQuery(args []string) int {
@@ -590,6 +716,8 @@ func main() {
 		os.Exit(cmdDep(os.Args[2:]))
 	case "comments":
 		os.Exit(cmdComments(os.Args[2:]))
+	case "todo":
+		os.Exit(cmdTodo(os.Args[2:]))
 	case "query":
 		os.Exit(cmdQuery(os.Args[2:]))
 	case "search":

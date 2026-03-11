@@ -22,6 +22,9 @@ This contract defines behavior that must match for parity tests to pass.
 - `sq list --json --flat --no-pager`
 - `sq update <id> ... --json`
 - `sq close <id> [--reason <text>] --json`
+- `sq todo [list] --json`
+- `sq todo add <title> [--priority <n>] --json`
+- `sq todo done <id> [--reason <text>] --json`
 
 ## JSON Contract Rules
 
@@ -65,6 +68,11 @@ This contract defines behavior that must match for parity tests to pass.
 ### Close
 - `close <id> --reason <text>` sets terminal status to `closed` and records reason.
 - `show` after close reflects closed status.
+
+### Todo convenience wrapper
+- `todo add <title> ...` creates an `issue_type=task` entry (default priority 2 unless overridden).
+- `todo` / `todo list` returns open `task` issues.
+- `todo done <id>` closes the referenced todo issue.
 
 ## Exit Code Contract
 

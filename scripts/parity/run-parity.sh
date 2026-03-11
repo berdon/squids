@@ -174,6 +174,15 @@ THIRD_ID="$(json_field "$THIRD_JSON" "id")"
 CLAIM_JSON="$(run_target "update $THIRD_ID --claim --json")"
 assert_contains "$CLAIM_JSON" "in_progress"
 
+# 11a) todo command parity
+TODO_ADD_JSON="$(run_target "todo add 'Parity todo item' --priority 2 --json")"
+TODO_ID="$(json_field "$TODO_ADD_JSON" "id")"
+assert_eq "$(json_field "$TODO_ADD_JSON" "issue_type")" "task"
+TODO_LIST_JSON="$(run_target "todo --json")"
+assert_contains "$TODO_LIST_JSON" "$TODO_ID"
+TODO_DONE_JSON="$(run_target "todo done $TODO_ID --json")"
+assert_contains "$TODO_DONE_JSON" "closed"
+
 # 12) query command parity
 QUERY_JSON="$(run_target "query \"status=open AND priority<=2\" --json")"
 assert_contains "$QUERY_JSON" "$TASK_ID"
