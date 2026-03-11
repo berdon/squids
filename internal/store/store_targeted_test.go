@@ -84,3 +84,38 @@ func TestUpdateAndDepsBranches(t *testing.T) {
 		t.Fatalf("expected deps err=%v deps=%v", err, deps)
 	}
 }
+
+func TestReadyTasksFiltersBlocked(t *testing.T) {
+	w, done := openTestDB(t)
+	defer done()
+
+	blockedTarget, _ := CreateTask(w.DB, CreateInput{Title: "blocked target", IssueType: "task", Priority: 1})
+	blocker, _ := CreateTask(w.DB, CreateInput{Title: "blocker", IssueType: "task", Priority: 1})
+	openFree, _ := CreateTask(w.DB, CreateInput{Title: "open free", IssueType: "task", Priority: 1})
+	closedTask, _ := CreateTask(w.DB, CreateInput{Title: "closed", IssueType: "task", Priority: 1})
+	_, _ = CloseTask(w.DB, closedTask.ID, "done")
+	if err := AddDependency(w.DB, blocker.ID, blockedTarget.ID, "blocks"); err != nil {
+		t.Fatalf("add blocks dep: %v", err)
+	}
+
+	ready, err := ReadyTasks(w.DB)
+	if err != nil {
+		t.Fatalf("ready tasks: %v", err)
+	}
+	ids := map[string]bool{}
+	for _, r := range ready {
+		ids[r.ID] = true
+	}
+	if !ids[blockedTarget.ID] {
+		t.Fatalf("blocked target should be ready by bd semantics")
+	}
+	if ids[blocker.ID] {
+		t.Fatalf("blocker (with outgoing blocks dep) should not be ready")
+	}
+	if !ids[openFree.ID] {
+		t.Fatalf("expected open free task to be ready")
+	}
+	if ids[closedTask.ID] {
+		t.Fatalf("closed task should not be ready")
+	}
+}

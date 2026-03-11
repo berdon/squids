@@ -656,6 +656,33 @@ func ListBlocked(db *sql.DB) ([]BlockedItem, error) {
 	return out, nil
 }
 
+func ReadyTasks(db *sql.DB) ([]Task, error) {
+	rows, err := db.Query(`SELECT DISTINCT issue_id FROM dependencies WHERE dep_type='blocks'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	blockedSelf := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		blockedSelf[id] = true
+	}
+	tasks, err := ListTasks(db)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Task, 0)
+	for _, t := range tasks {
+		if t.Status == "open" && !blockedSelf[t.ID] {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
 type Comment struct {
 	ID        int    `json:"id"`
 	IssueID   string `json:"issue_id"`

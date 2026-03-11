@@ -29,26 +29,16 @@ func cmdInit() int {
 }
 
 func cmdReady() int {
-	dbPath, err := dbPathFromEnvOrCwd()
-	if err != nil {
-		return failRuntime(err.Error())
-	}
-	db, err := store.Open(dbPath)
+	db, _, err := openTaskDB()
 	if err != nil {
 		return failRuntime(err.Error())
 	}
 	defer db.Close()
-	if err := store.EnsureInitialized(db); err != nil {
-		return failRuntime(err.Error())
-	}
-	if err := store.Ping(db); err != nil {
-		return failRuntime(err.Error())
-	}
-	v, err := store.CurrentVersion(db)
+	items, err := store.ReadyTasks(db)
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON([]map[string]any{{"command": "ready", "ok": true, "db_path": dbPath, "schema_version": v}})
+	return printJSON(items)
 }
 
 func cmdCreate(args []string) int {

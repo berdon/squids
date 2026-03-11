@@ -62,6 +62,17 @@ assert_eq() {
   fi
 }
 
+assert_not_contains() {
+  local haystack="$1"
+  local needle="$2"
+  if [[ "$haystack" == *"$needle"* ]]; then
+    echo "ASSERT FAILED: expected output to NOT contain: $needle"
+    echo "----- output -----"
+    echo "$haystack"
+    exit 1
+  fi
+}
+
 assert_json_status() {
   local json="$1"
   local want="$2"
@@ -147,6 +158,9 @@ assert_contains "$CHILDREN_JSON" "$CHILD_ID"
 BLOCKED_JSON="$(run_target "blocked --json")"
 assert_contains "$BLOCKED_JSON" "$CHILD_ID"
 assert_contains "$BLOCKED_JSON" "$BLOCKER_ID"
+READY_AFTER_BLOCK_JSON="$(run_target "ready --json")"
+assert_contains "$READY_AFTER_BLOCK_JSON" "\"id\": \"$CHILD_ID\""
+assert_not_contains "$READY_AFTER_BLOCK_JSON" "\"id\": \"$BLOCKER_ID\""
 
 # 6d) comments command family parity (add + list)
 COMMENT_ADD_JSON="$(run_target "comments add $TASK_ID 'hello comment' --json")"
