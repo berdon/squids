@@ -106,19 +106,23 @@ SECOND_ID="$(json_field "$SECOND_JSON" "id")"
 DEP_JSON="$(run_target "update $TASK_ID --set-metadata upstream=$SECOND_ID --json")"
 assert_contains "$DEP_JSON" "$SECOND_ID"
 
-# 7) close + verify terminal state
+# 7) assignee clear path (empty assignee should be accepted)
+CLEAR_JSON="$(run_target "update $TASK_ID --assignee '' --status open --json")"
+assert_json_status "$CLEAR_JSON" "open"
+
+# 8) close + verify terminal state
 CLOSE_JSON="$(run_target "close $TASK_ID --reason 'Completed parity test' --json")"
 assert_json_status "$CLOSE_JSON" "closed"
 SHOW_CLOSED="$(run_target "show $TASK_ID --json")"
 assert_json_status "$SHOW_CLOSED" "closed"
 
-# 8) claim path
+# 9) claim path
 THIRD_JSON="$(run_target "create 'Claim me' --type task --priority 2 --json")"
 THIRD_ID="$(json_field "$THIRD_JSON" "id")"
 CLAIM_JSON="$(run_target "update $THIRD_ID --claim --json")"
 assert_contains "$CLAIM_JSON" "in_progress"
 
-# 9) negative path: missing issue show should fail
+# 10) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"
 MISSING_CODE=$?
