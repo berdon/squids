@@ -81,6 +81,7 @@ func usage() {
 	fmt.Println("  hooks    Manage git hooks (compat surface)")
 	fmt.Println("  completion Generate shell completion scripts")
 	fmt.Println("  onboard  Print AGENTS.md onboarding snippet")
+	fmt.Println("  import-beads Import tasks/deps/comments from a beads sqlite DB")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
