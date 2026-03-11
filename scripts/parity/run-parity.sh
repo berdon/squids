@@ -81,6 +81,45 @@ assert_json_status() {
   assert_eq "$got" "$want"
 }
 
+assert_json_valid() {
+  local json="$1"
+  python3 - <<PY
+import json
+json.loads('''$json''')
+PY
+}
+
+assert_json_kind() {
+  local json="$1"
+  local want="$2"  # object|array
+  python3 - <<PY
+import json
+obj=json.loads('''$json''')
+want='$want'
+if want=='object' and not isinstance(obj, dict):
+    raise SystemExit('expected JSON object')
+if want=='array' and not isinstance(obj, list):
+    raise SystemExit('expected JSON array')
+PY
+}
+
+assert_json_has_keys() {
+  local json="$1"
+  shift
+  local keys=("$@")
+  local key_csv
+  key_csv="$(IFS=,; echo "${keys[*]}")"
+  python3 - <<PY
+import json
+obj=json.loads('''$json''')
+if not isinstance(obj, dict):
+    raise SystemExit('expected object for key check')
+for k in '$key_csv'.split(','):
+    if k and k not in obj:
+        raise SystemExit(f'missing key: {k}')
+PY
+}
+
 echo "[parity] target=$TARGET_BIN"
 cd "$WORK_DIR"
 
@@ -95,10 +134,17 @@ run_target "help --actor tester" >/dev/null
 # 1) init + ready
 run_target "init --prefix bd --json" >/dev/null
 READY_JSON="$(run_target "ready --json")"
-assert_contains "$READY_JSON" "["
+assert_json_valid "$READY_JSON"
+assert_json_kind "$READY_JSON" "array"
+READY_PLAIN="$(run_target "ready")"
+assert_json_valid "$READY_PLAIN"
+assert_json_kind "$READY_PLAIN" "array"
 
 # 2) create
 CREATE_JSON="$(run_target "create 'Parity lifecycle task' --type task --priority 1 --description 'shell parity' --json")"
+assert_json_valid "$CREATE_JSON"
+assert_json_kind "$CREATE_JSON" "object"
+assert_json_has_keys "$CREATE_JSON" id title status issue_type
 TASK_ID="$(json_field "$CREATE_JSON" "id")"
 assert_contains "$TASK_ID" "bd-"
 
@@ -109,6 +155,9 @@ assert_contains "$Q_ID" "bd-"
 
 # 3) show
 SHOW_JSON="$(run_target "show $TASK_ID --json")"
+assert_json_valid "$SHOW_JSON"
+assert_json_kind "$SHOW_JSON" "object"
+assert_json_has_keys "$SHOW_JSON" id title status created_at updated_at
 assert_eq "$(json_field "$SHOW_JSON" "id")" "$TASK_ID"
 assert_eq "$(json_field "$SHOW_JSON" "title")" "Parity lifecycle task"
 assert_json_status "$SHOW_JSON" "open"
@@ -120,6 +169,8 @@ assert_eq "$(json_field "$UPDATE_JSON" "assignee")" "alice"
 
 # 5) list contract
 LIST_JSON="$(run_target "list --json --flat --no-pager")"
+assert_json_valid "$LIST_JSON"
+assert_json_kind "$LIST_JSON" "array"
 assert_contains "$LIST_JSON" "$TASK_ID"
 
 # 6) labels + deps
@@ -286,17 +337,25 @@ assert_contains "$TYPES_JSON" "task"
 
 # 14) count/status parity
 COUNT_JSON="$(run_target "count --json")"
-assert_contains "$COUNT_JSON" "count"
+assert_json_valid "$COUNT_JSON"
+assert_json_kind "$COUNT_JSON" "object"
+assert_json_has_keys "$COUNT_JSON" count
 COUNT_OPEN_JSON="$(run_target "count --status open --json")"
-assert_contains "$COUNT_OPEN_JSON" "count"
+assert_json_valid "$COUNT_OPEN_JSON"
+assert_json_kind "$COUNT_OPEN_JSON" "object"
+assert_json_has_keys "$COUNT_OPEN_JSON" count
 STATUS_JSON="$(run_target "status --json")"
-assert_contains "$STATUS_JSON" "open"
+assert_json_valid "$STATUS_JSON"
+assert_json_kind "$STATUS_JSON" "object"
+assert_json_has_keys "$STATUS_JSON" open in_progress closed
 
 # 14b) version parity
 VERSION_TXT="$(run_target "version")"
 assert_contains "$VERSION_TXT" "version"
 VERSION_JSON="$(run_target "version --json")"
-assert_contains "$VERSION_JSON" "version"
+assert_json_valid "$VERSION_JSON"
+assert_json_kind "$VERSION_JSON" "object"
+assert_json_has_keys "$VERSION_JSON" version
 VERSION_HELP="$(run_target "version --help")"
 assert_contains "$VERSION_HELP" "Print version information"
 run_target "version --quiet" >/dev/null
@@ -314,14 +373,20 @@ run_target "--version" >/dev/null
 WHERE_TXT="$(run_target "where")"
 assert_contains "$WHERE_TXT" ".sq"
 WHERE_JSON="$(run_target "where --json")"
-assert_contains "$WHERE_JSON" "database_path"
+assert_json_valid "$WHERE_JSON"
+assert_json_kind "$WHERE_JSON" "object"
+assert_json_has_keys "$WHERE_JSON" database_path
 run_target "where --actor tester" >/dev/null
 
 # 14d) info parity
 INFO_JSON="$(run_target "info --json")"
-assert_contains "$INFO_JSON" "database_path"
+assert_json_valid "$INFO_JSON"
+assert_json_kind "$INFO_JSON" "object"
+assert_json_has_keys "$INFO_JSON" database_path
 INFO_SCHEMA_JSON="$(run_target "info --schema --json")"
-assert_contains "$INFO_SCHEMA_JSON" "schema"
+assert_json_valid "$INFO_SCHEMA_JSON"
+assert_json_kind "$INFO_SCHEMA_JSON" "object"
+assert_json_has_keys "$INFO_SCHEMA_JSON" schema
 run_target "info --whats-new" >/dev/null
 run_target "info --whats-new --json" >/dev/null
 run_target "info --thanks" >/dev/null
