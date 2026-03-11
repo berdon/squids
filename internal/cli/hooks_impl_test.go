@@ -178,6 +178,30 @@ func TestUninstallHooksAt_PreservesUserContent(t *testing.T) {
 	}
 }
 
+func TestUninstallHooksAt_PreservesPrefixAndSuffixAroundManagedBlock(t *testing.T) {
+	wd := t.TempDir()
+	hooksDir := filepath.Join(wd, ".beads-hooks")
+	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hookPath := filepath.Join(hooksDir, "pre-push")
+	content := "#!/usr/bin/env sh\necho before\n" + generateHookSection("pre-push") + "echo after\n"
+	if err := os.WriteFile(hookPath, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := uninstallHooksAt(hooksDir); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(hookPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(b)
+	if !strings.Contains(got, "echo before") || !strings.Contains(got, "echo after") || strings.Contains(got, hookSectionBeginPrefix) {
+		t.Fatalf("unexpected preserved content: %q", got)
+	}
+}
+
 func TestUninstallHooksAt_RemovesEffectivelyEmptyHook(t *testing.T) {
 	wd := t.TempDir()
 	hooksDir := filepath.Join(wd, ".beads-hooks")
@@ -319,6 +343,38 @@ func TestListHookStatuses_Shared(t *testing.T) {
 		if !s.IsShim || s.Version == "" {
 			t.Fatalf("expected shim+version for %s", s.Name)
 		}
+	}
+}
+
+func TestListHookStatuses_SharedPartialInstall(t *testing.T) {
+	wd := t.TempDir()
+	old, _ := os.Getwd()
+	defer func() { _ = os.Chdir(old) }()
+	if err := os.Chdir(wd); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(".beads-hooks", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(".beads-hooks", "pre-commit"), []byte("#!/usr/bin/env sh\n"+generateHookSection("pre-commit")), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	statuses, err := listHookStatuses(true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seenInstalled := false
+	seenMissing := false
+	for _, s := range statuses {
+		if s.Name == "pre-commit" && s.Installed {
+			seenInstalled = true
+		}
+		if s.Name != "pre-commit" && !s.Installed {
+			seenMissing = true
+		}
+	}
+	if !seenInstalled || !seenMissing {
+		t.Fatalf("expected partial install states, got %+v", statuses)
 	}
 }
 
