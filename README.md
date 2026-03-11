@@ -266,5 +266,6 @@ TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 - CLI reference: `docs/CLI_REFERENCE.md`
 - Migration guide: `docs/MIGRATION_FROM_BEADS.md`
 - Compatibility contract: `docs/COMPATIBILITY_CONTRACT.md`
+- APE/cosmopolitan build notes: `docs/APE_BUILD.md`
 - SQLite concurrency strategy: `docs/SQLITE_CONCURRENCY.md`
 - Release notes: `docs/RELEASE_NOTES.md`

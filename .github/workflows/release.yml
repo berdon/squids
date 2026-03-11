@@ -30,6 +30,10 @@ jobs:
           GOOS=darwin GOARCH=arm64 go build -o dist/sq-darwin-arm64 ./cmd/sq
           GOOS=windows GOARCH=amd64 go build -o dist/sq-windows-amd64.exe ./cmd/sq
 
+      - name: Build APE artifact (best effort)
+        run: |
+          ./scripts/build-ape.sh
+
       - name: Checksums
         run: |
           cd dist
@@ -42,4 +46,5 @@ jobs:
             dist/sq-linux-amd64
             dist/sq-darwin-arm64
             dist/sq-windows-amd64.exe
+            dist/sq-ape*
             dist/checksums.txt

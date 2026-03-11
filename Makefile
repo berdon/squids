@@ -1,4 +1,4 @@
-.PHONY: build test coverage-check
+.PHONY: build test coverage-check ape-build
 
 COVERAGE_MIN ?= 90.0
 
@@ -13,3 +13,6 @@ test:
 
 build: coverage-check
 	go build -o bin/sq ./cmd/sq
+
+ape-build:
+	./scripts/build-ape.sh
