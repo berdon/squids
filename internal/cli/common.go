@@ -79,6 +79,7 @@ func usage() {
 	fmt.Println("  quickstart Show quick start guide")
 	fmt.Println("  history  Show issue history (not supported on sq sqlite backend)")
 	fmt.Println("  hooks    Manage git hooks (compat surface)")
+	fmt.Println("  completion Generate shell completion scripts")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {

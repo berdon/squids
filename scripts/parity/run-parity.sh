@@ -392,6 +392,14 @@ GT_ROLE="beads/crew/parity" run_target "hooks run prepare-commit-msg $MSG_FILE m
 assert_contains "$(cat "$MSG_FILE")" "Executed-By: beads/crew/parity"
 rm -f "$MSG_FILE"
 
+# 14i) completion parity
+COMP_BASH="$(run_target "completion bash")"
+assert_contains "$COMP_BASH" "completion"
+COMP_ZSH="$(run_target "completion zsh")"
+assert_contains "$COMP_ZSH" "compdef"
+run_target "completion fish" >/dev/null
+run_target "completion powershell" >/dev/null
+
 # 15) negative path: missing issue show should fail
 set +e
 MISSING_OUT="$(run_target "show bd-does-not-exist --json" 2>&1)"

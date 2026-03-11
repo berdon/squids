@@ -640,3 +640,59 @@ func cmdHooks(args []string) int {
 	}
 	return printJSON(status)
 }
+
+func cmdCompletion(args []string) int {
+	if len(args) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "sq completion [bash|zsh|fish|powershell]")
+		return 0
+	}
+	shell := ""
+	helpRequested := false
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "bash", "zsh", "fish", "powershell":
+			if shell == "" {
+				shell = a
+				continue
+			}
+			return failUsage("completion accepts one shell")
+		case "--help", "-h":
+			helpRequested = true
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// compatibility flags accepted as no-op
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("unknown shell: " + a)
+		}
+	}
+	if shell == "" {
+		if helpRequested {
+			_, _ = fmt.Fprintln(os.Stdout, "Generate shell completion script: sq completion <bash|zsh|fish|powershell>")
+			return 0
+		}
+		return failUsage("usage: sq completion <bash|zsh|fish|powershell>")
+	}
+	script := ""
+	switch shell {
+	case "bash":
+		script = "# bash completion for sq\n_complete_sq() { COMPREPLY=(\"help\" \"init\" \"list\" \"show\" \"create\" \"update\" \"close\" \"ready\"); }\ncomplete -F _complete_sq sq\n"
+	case "zsh":
+		script = "#compdef sq\n_arguments '*: :->cmds'\n"
+	case "fish":
+		script = "complete -c sq -f\ncomplete -c sq -a 'help init list show create update close ready'\n"
+	case "powershell":
+		script = "Register-ArgumentCompleter -Native -CommandName sq -ScriptBlock { param($wordToComplete) 'help','init','list','show','create','update','close','ready' | Where-Object { $_ -like \"$wordToComplete*\" } }\n"
+	}
+	_, err := fmt.Fprint(os.Stdout, script)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return 0
+}

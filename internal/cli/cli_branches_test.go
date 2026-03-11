@@ -243,4 +243,16 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("hooks", "install", "--wat")
 	mustFail("hooks", "--wat")
 	mustFail("hooks", "wat")
+
+	mustOK("completion")
+	mustOK("completion", "bash")
+	mustOK("completion", "zsh")
+	mustOK("completion", "fish")
+	mustOK("completion", "powershell")
+	mustOK("completion", "--help")
+	mustOK("completion", "bash", "--json")
+	mustOK("completion", "bash", "--actor", "tester", "--db", "/tmp/sq.db", "--dolt-auto-commit", "off")
+	mustFail("completion", "wat")
+	mustFail("completion", "--wat")
+	mustFail("completion", "bash", "zsh")
 }

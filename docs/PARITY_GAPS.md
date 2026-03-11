@@ -4,13 +4,13 @@ _Generated: 2026-03-11 06:36_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **37**
-- Shared commands: **37**
-- Missing in sq: **56**
+- sq commands: **38**
+- Shared commands: **38**
+- Missing in sq: **55**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `hooks`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -20,6 +20,7 @@ _Generated: 2026-03-11 06:36_
 | `children` | 15 | — |
 | `close` | 19 | — |
 | `comments` | 15 | `add` |
+| `completion` | 0 | — |
 | `count` | 43 | — |
 | `create` | 55 | — |
 | `defer` | 13 | — |
@@ -71,6 +72,10 @@ _Generated: 2026-03-11 06:36_
 ### `comments`
 - Missing flags in sq (15): `--actor`, `--db`, `--dolt-auto-commit`, `--help`, `--json`, `--local-time`, `--profile`, `--quiet`, `--readonly`, `--sandbox`, `--verbose`, `-f`, `-h`, `-q`, `-v`
 - Missing subcommands in sq: `add`
+
+### `completion`
+- Missing flags in sq (0): none
+- Missing subcommands in sq: none
 
 ### `count`
 - Missing flags in sq (43): `--actor`, `--assignee`, `--by-assignee`, `--by-label`, `--by-priority`, `--by-status`, `--by-type`, `--closed-after`, `--closed-before`, `--created-after`, `--created-before`, `--db`, `--desc-contains`, `--dolt-auto-commit`, `--empty-description`, `--help`, `--id`, `--json`, `--label`, `--label-any`, `--no-assignee`, `--no-labels`, `--notes-contains`, `--priority`, `--priority-max`, `--priority-min`, `--profile`, `--quiet`, `--readonly`, `--sandbox`, `--title`, `--title-contains`, `--type`, `--updated-after`, `--updated-before`, `--verbose`, `-a`, `-h`, `-l`, `-p`, `-q`, `-t`, `-v`
