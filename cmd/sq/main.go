@@ -54,6 +54,8 @@ func usage() {
 	fmt.Println("  todo    Manage TODO items")
 	fmt.Println("  children List child tasks for a parent")
 	fmt.Println("  blocked Show blocked tasks")
+	fmt.Println("  duplicate Mark issue as duplicate of canonical issue")
+	fmt.Println("  supersede Mark issue as superseded by replacement")
 	fmt.Println("  query   Query tasks")
 	fmt.Println("  search  Search tasks")
 	fmt.Println("  count   Count tasks")
@@ -648,6 +650,82 @@ func cmdBlocked(args []string) int {
 	return printJSON(items)
 }
 
+func cmdDuplicate(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq duplicate <id> --of <canonical-id> [--json]")
+	}
+	id := args[0]
+	canonical := ""
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--of":
+			if i+1 < len(args) {
+				canonical = args[i+1]
+				i++
+			}
+		case "--json":
+			// accepted
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	if canonical == "" {
+		return failUsage("--of is required")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	if err := store.AddDependency(db, id, canonical, "duplicates"); err != nil {
+		return failRuntime(err.Error())
+	}
+	if _, err := store.CloseTask(db, id, "Duplicate of "+canonical); err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"canonical": canonical, "duplicate": id, "status": "closed"})
+}
+
+func cmdSupersede(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq supersede <id> --with <replacement-id> [--json]")
+	}
+	id := args[0]
+	replacement := ""
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--with":
+			if i+1 < len(args) {
+				replacement = args[i+1]
+				i++
+			}
+		case "--json":
+			// accepted
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	if replacement == "" {
+		return failUsage("--with is required")
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	if err := store.AddDependency(db, id, replacement, "supersedes"); err != nil {
+		return failRuntime(err.Error())
+	}
+	if _, err := store.CloseTask(db, id, "Superseded by "+replacement); err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(map[string]any{"replacement": replacement, "superseded": id, "status": "closed"})
+}
+
 func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
@@ -794,6 +872,10 @@ func main() {
 		os.Exit(cmdChildren(os.Args[2:]))
 	case "blocked":
 		os.Exit(cmdBlocked(os.Args[2:]))
+	case "duplicate":
+		os.Exit(cmdDuplicate(os.Args[2:]))
+	case "supersede":
+		os.Exit(cmdSupersede(os.Args[2:]))
 	case "query":
 		os.Exit(cmdQuery(os.Args[2:]))
 	case "search":

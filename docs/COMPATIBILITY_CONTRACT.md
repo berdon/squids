@@ -27,6 +27,8 @@ This contract defines behavior that must match for parity tests to pass.
 - `sq todo done <id> [--reason <text>] --json`
 - `sq children <parent-id> --json`
 - `sq blocked --json`
+- `sq duplicate <id> --of <canonical-id> --json`
+- `sq supersede <id> --with <replacement-id> --json`
 
 ## JSON Contract Rules
 
@@ -79,6 +81,10 @@ This contract defines behavior that must match for parity tests to pass.
 ### Children / blocked views
 - `children <parent-id>` lists child issues linked by `parent-child` dependency edges.
 - `blocked` lists open issues that are currently blocked by open blockers (`blocks` dependency edges), with `blocked_by_count` and `blocked_by` IDs.
+
+### Duplicate / supersede flows
+- `duplicate <id> --of <canonical-id>` closes `<id>` and records a `duplicates` relationship to the canonical issue.
+- `supersede <id> --with <replacement-id>` closes `<id>` and records a `supersedes` relationship to the replacement issue.
 
 ## Exit Code Contract
 
