@@ -13,10 +13,10 @@ This repo starts with a black-box parity suite that can run against an existing 
 ./scripts/parity/run-parity.sh
 ```
 
-### Run against another binary
+### Run against squids binary (`sq`)
 
 ```bash
-TARGET_BIN=./bin/squids ./scripts/parity/run-parity.sh
+TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 ```
 
 ### Optional target args
