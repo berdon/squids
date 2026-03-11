@@ -10,6 +10,8 @@ func run(args []string) int {
 	return cli.Run(args)
 }
 
+var exitFn = os.Exit
+
 func main() {
-	os.Exit(run(os.Args[1:]))
+	exitFn(run(os.Args[1:]))
 }

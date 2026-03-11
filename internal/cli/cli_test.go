@@ -266,3 +266,37 @@ func TestRun_JSONOutputParseable(t *testing.T) {
 		t.Fatalf("missing core_types")
 	}
 }
+
+func TestRun_QVariants(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
+		t.Fatalf("init failed")
+	}
+
+	code, out, _ := runCLI(t, db, "q", "Quick One", "--type", "bug", "--priority", "3", "--description", "d", "--json")
+	if code != 0 {
+		t.Fatalf("q --json failed: %d", code)
+	}
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(out), &obj); err != nil {
+		t.Fatalf("q --json not object json: %v (%q)", err, out)
+	}
+	if _, ok := obj["id"]; !ok {
+		t.Fatalf("q --json missing id: %q", out)
+	}
+
+	code, out, _ = runCLI(t, db, "q", "Quick Two")
+	if code != 0 {
+		t.Fatalf("q plain failed: %d", code)
+	}
+	if strings.TrimSpace(out) == "" {
+		t.Fatalf("q plain expected id output")
+	}
+
+	if code, _, errOut := runCLI(t, db, "q", "Bad", "--priority", "NaN"); code != 2 || !strings.Contains(errOut, "invalid --priority") {
+		t.Fatalf("expected invalid priority usage failure, code=%d err=%q", code, errOut)
+	}
+	if code, _, errOut := runCLI(t, db, "q", "Bad", "--unknown"); code != 2 || !strings.Contains(errOut, "unknown flag") {
+		t.Fatalf("expected unknown flag usage failure, code=%d err=%q", code, errOut)
+	}
+}

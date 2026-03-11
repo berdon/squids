@@ -19,3 +19,23 @@ func TestMainSetsExitCodeViaRunPath(t *testing.T) {
 		t.Fatalf("expected code 0 got %d", code)
 	}
 }
+
+func TestMainInvokesExitFnWithRunCode(t *testing.T) {
+	oldArgs := os.Args
+	oldExit := exitFn
+	defer func() {
+		os.Args = oldArgs
+		exitFn = oldExit
+	}()
+
+	os.Args = []string{"sq", "help"}
+	got := -1
+	exitFn = func(code int) {
+		got = code
+	}
+
+	main()
+	if got != 0 {
+		t.Fatalf("expected main to call exitFn(0), got %d", got)
+	}
+}

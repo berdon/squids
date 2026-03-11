@@ -26,6 +26,23 @@ func TestDBPathFromEnvOrCwd(t *testing.T) {
 	}
 }
 
+func TestOpenTaskDB_Success(t *testing.T) {
+	tmp := t.TempDir()
+	good := filepath.Join(tmp, "tasks.sqlite")
+	old := os.Getenv("SQ_DB_PATH")
+	defer func() { _ = os.Setenv("SQ_DB_PATH", old) }()
+	_ = os.Setenv("SQ_DB_PATH", good)
+
+	db, gotPath, err := openTaskDB()
+	if err != nil {
+		t.Fatalf("expected openTaskDB success: %v", err)
+	}
+	defer db.Close()
+	if gotPath != good {
+		t.Fatalf("expected path %q got %q", good, gotPath)
+	}
+}
+
 func TestOpenTaskDB_BadPath(t *testing.T) {
 	tmp := t.TempDir()
 	bad := filepath.Join(tmp, "notadir", "tasks.sqlite")
