@@ -104,7 +104,6 @@ func TestResolveHooksDir_DefaultGitModeErrorsOutsideGit(t *testing.T) {
 	}
 }
 
-
 func TestInjectHookSection_AppendsWhenNoMarkers(t *testing.T) {
 	existing := "#!/usr/bin/env sh\necho hi\n"
 	out := injectHookSection(existing, generateHookSection("pre-commit"))
@@ -341,5 +340,19 @@ func TestListHookStatuses_DefaultOutsideGit(t *testing.T) {
 		if s.Installed {
 			t.Fatalf("expected missing status outside git for %s", s.Name)
 		}
+	}
+}
+
+func TestRunHookDispatcher_KnownHooks(t *testing.T) {
+	for _, h := range managedHookNames {
+		if code := runHookDispatcher(h, []string{"arg1"}); code != 0 {
+			t.Fatalf("expected 0 for %s, got %d", h, code)
+		}
+	}
+}
+
+func TestRunHookDispatcher_UnknownHook(t *testing.T) {
+	if code := runHookDispatcher("wat", nil); code != 2 {
+		t.Fatalf("expected 2 for unknown hook, got %d", code)
 	}
 }

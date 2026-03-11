@@ -236,6 +236,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("hooks", "run")
 	mustOK("hooks", "run", "pre-commit")
 	mustOK("hooks", "run", "pre-commit", "--json")
+	mustFail("hooks", "run", "wat")
 	mustFail("hooks", "install", "--wat")
 	mustFail("hooks", "--wat")
 	mustFail("hooks", "wat")

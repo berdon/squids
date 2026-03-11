@@ -623,7 +623,15 @@ func cmdHooks(args []string) int {
 		if len(args) < 2 {
 			return failUsage("usage: sq hooks run <hook-name> [args...]")
 		}
-		status["hook"] = args[1]
+		hookName := args[1]
+		exitCode := runHookDispatcher(hookName, args[2:])
+		if exitCode != 0 {
+			if exitCode == 2 {
+				return failUsage("unknown hook: " + hookName)
+			}
+			return failRuntime("hook failed: " + hookName)
+		}
+		status["hook"] = hookName
 	default:
 		return failUsage("unknown hooks subcommand: " + sub)
 	}

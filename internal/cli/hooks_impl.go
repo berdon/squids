@@ -218,3 +218,26 @@ func listHookStatuses(shared, beadsHooks bool) ([]HookStatus, error) {
 	}
 	return out, nil
 }
+
+func runHookDispatcher(hookName string, hookArgs []string) int {
+	switch hookName {
+	case "pre-commit":
+		return runPreCommitHook(hookArgs)
+	case "post-merge":
+		return runPostMergeHook(hookArgs)
+	case "pre-push":
+		return runPrePushHook(hookArgs)
+	case "post-checkout":
+		return runPostCheckoutHook(hookArgs)
+	case "prepare-commit-msg":
+		return runPrepareCommitMsgHook(hookArgs)
+	default:
+		return 2
+	}
+}
+
+func runPreCommitHook(_ []string) int        { return 0 }
+func runPostMergeHook(_ []string) int        { return 0 }
+func runPrePushHook(_ []string) int          { return 0 }
+func runPostCheckoutHook(_ []string) int     { return 0 }
+func runPrepareCommitMsgHook(_ []string) int { return 0 }
