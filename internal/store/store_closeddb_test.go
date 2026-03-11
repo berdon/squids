@@ -53,6 +53,15 @@ func TestClosedDBErrorPaths(t *testing.T) {
 	if _, err := ListBlocked(w.DB); err == nil {
 		t.Fatalf("expected list blocked error on closed db")
 	}
+	if _, err := ReadyTasks(w.DB); err == nil {
+		t.Fatalf("expected ready tasks error on closed db")
+	}
+	if _, err := StaleTasks(w.DB, 30); err == nil {
+		t.Fatalf("expected stale tasks error on closed db")
+	}
+	if _, err := OrphanTasks(w.DB); err == nil {
+		t.Fatalf("expected orphan tasks error on closed db")
+	}
 	if _, err := ListComments(w.DB, t1.ID); err == nil {
 		t.Fatalf("expected list comments error on closed db")
 	}

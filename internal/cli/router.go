@@ -65,6 +65,10 @@ func Run(args []string) int {
 		return cmdTypes(args[1:])
 	case "query":
 		return cmdQuery(args[1:])
+	case "stale":
+		return cmdStale(args[1:])
+	case "orphans":
+		return cmdOrphans(args[1:])
 	case "search":
 		return cmdSearch(args[1:])
 	case "count":

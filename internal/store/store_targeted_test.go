@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestStoreOpenBranches(t *testing.T) {
@@ -94,6 +95,19 @@ func TestRenameTaskAndPrefix(t *testing.T) {
 	_ = AddDependency(w.DB, a.ID, b.ID, "blocks")
 	_, _ = AddComment(w.DB, a.ID, "me", "hello")
 
+	if _, err := RenameTask(w.DB, "", "x"); err == nil {
+		t.Fatalf("expected empty old id error")
+	}
+	if _, err := RenameTask(w.DB, a.ID, a.ID); err == nil {
+		t.Fatalf("expected same id error")
+	}
+	if _, err := RenameTask(w.DB, "bd-missing", "bd-new"); err == nil {
+		t.Fatalf("expected missing old id error")
+	}
+	if _, err := RenameTask(w.DB, a.ID, b.ID); err == nil {
+		t.Fatalf("expected new-id exists error")
+	}
+
 	renamed, err := RenameTask(w.DB, a.ID, "bd-renamed")
 	if err != nil {
 		t.Fatalf("rename task: %v", err)
@@ -111,6 +125,12 @@ func TestRenameTaskAndPrefix(t *testing.T) {
 		t.Fatalf("expected comments preserved err=%v comments=%v", err, comments)
 	}
 
+	if _, err := RenamePrefix(w.DB, "", "sq"); err == nil {
+		t.Fatalf("expected empty old prefix error")
+	}
+	if n, err := RenamePrefix(w.DB, "sq", "sq"); err != nil || n != 0 {
+		t.Fatalf("expected no-op rename prefix, got n=%d err=%v", n, err)
+	}
 	n, err := RenamePrefix(w.DB, "bd", "sq")
 	if err != nil {
 		t.Fatalf("rename prefix: %v", err)
@@ -120,6 +140,51 @@ func TestRenameTaskAndPrefix(t *testing.T) {
 	}
 	if _, err := ShowTask(w.DB, "sq-renamed"); err != nil {
 		t.Fatalf("expected sq-renamed to exist: %v", err)
+	}
+}
+
+func TestStaleAndOrphanTasks(t *testing.T) {
+	w, done := openTestDB(t)
+	defer done()
+
+	a, _ := CreateTask(w.DB, CreateInput{Title: "stale-candidate", IssueType: "task", Priority: 1})
+	// backdate updated_at to mark stale
+	oldTs := time.Now().UTC().Add(-40 * 24 * time.Hour).Format(time.RFC3339)
+	_, _ = w.DB.Exec(`UPDATE tasks SET updated_at=? WHERE id=?`, oldTs, a.ID)
+	stale, err := StaleTasks(w.DB, 30)
+	if err != nil {
+		t.Fatalf("stale tasks: %v", err)
+	}
+	found := false
+	for _, s := range stale {
+		if s.ID == a.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected stale task to be returned")
+	}
+	// invalid timestamp should be skipped without error
+	bad, _ := CreateTask(w.DB, CreateInput{Title: "bad-ts", IssueType: "task", Priority: 1})
+	_, _ = w.DB.Exec(`UPDATE tasks SET updated_at=? WHERE id=?`, "not-a-time", bad.ID)
+	if _, err := StaleTasks(w.DB, -1); err != nil {
+		t.Fatalf("stale tasks default-days path failed: %v", err)
+	}
+
+	owner, _ := CreateTask(w.DB, CreateInput{Title: "orphan-owner", IssueType: "task", Priority: 1})
+	_, _ = w.DB.Exec(`INSERT INTO dependencies(issue_id,depends_on_id,dep_type) VALUES (?,?,?)`, owner.ID, "bd-missing-ref", "blocks")
+	orphans, err := OrphanTasks(w.DB)
+	if err != nil {
+		t.Fatalf("orphan tasks: %v", err)
+	}
+	of := false
+	for _, o := range orphans {
+		if o.ID == owner.ID {
+			of = true
+		}
+	}
+	if !of {
+		t.Fatalf("expected orphan owner task in results")
 	}
 }
 

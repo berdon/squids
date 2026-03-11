@@ -863,6 +863,60 @@ func StatusSummary(db *sql.DB) (map[string]int, error) {
 	return summary, nil
 }
 
+func StaleTasks(db *sql.DB, days int) ([]Task, error) {
+	if days <= 0 {
+		days = 30
+	}
+	tasks, err := ListTasks(db)
+	if err != nil {
+		return nil, err
+	}
+	threshold := time.Now().UTC().Add(-time.Duration(days) * 24 * time.Hour)
+	out := make([]Task, 0)
+	for _, t := range tasks {
+		if t.Status != "open" {
+			continue
+		}
+		ts := strings.TrimSpace(t.UpdatedAt)
+		if ts == "" {
+			ts = strings.TrimSpace(t.CreatedAt)
+		}
+		parsed, err := time.Parse(time.RFC3339, ts)
+		if err != nil {
+			continue
+		}
+		if parsed.Before(threshold) {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+func OrphanTasks(db *sql.DB) ([]Task, error) {
+	rows, err := db.Query(`
+		SELECT DISTINCT d.issue_id
+		FROM dependencies d
+		LEFT JOIN tasks parent ON parent.id = d.depends_on_id
+		WHERE parent.id IS NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Task, 0)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		t, err := ShowTask(db, id)
+		if err != nil {
+			continue
+		}
+		out = append(out, *t)
+	}
+	return out, nil
+}
+
 func QueryTasks(db *sql.DB, expr string) ([]Task, error) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {

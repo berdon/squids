@@ -66,6 +66,8 @@ func usage() {
 	fmt.Println("  supersede Mark issue as superseded by replacement")
 	fmt.Println("  types   List supported issue types")
 	fmt.Println("  query   Query tasks")
+	fmt.Println("  stale   List stale open tasks")
+	fmt.Println("  orphans List tasks with orphaned dependency refs")
 	fmt.Println("  search  Search tasks")
 	fmt.Println("  count   Count tasks")
 	fmt.Println("  status  Show status summary")

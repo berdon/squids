@@ -37,6 +37,58 @@ func cmdQuery(args []string) int {
 	return printJSON(items)
 }
 
+func cmdStale(args []string) int {
+	days := 30
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--days", "-d":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil {
+					days = n
+				}
+				i++
+			}
+		case "--json":
+			// accepted
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.StaleTasks(db, days)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
+func cmdOrphans(args []string) int {
+	for _, a := range args {
+		if a == "--json" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+	items, err := store.OrphanTasks(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return printJSON(items)
+}
+
 func cmdSearch(args []string) int {
 	query := ""
 	limit := 50

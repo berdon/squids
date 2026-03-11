@@ -261,7 +261,11 @@ if [[ $BAD_QUERY_CODE -eq 0 ]]; then
 fi
 assert_contains "$BAD_QUERY_OUT" "unknown"
 
-# 13) search command parity
+# 13) stale/orphans command parity
+run_target "stale --days 1 --json" >/dev/null
+run_target "orphans --json" >/dev/null
+
+# 14) search command parity
 SEARCH_JSON="$(run_target "search \"Parity lifecycle\" --json -n 5")"
 assert_contains "$SEARCH_JSON" "$TASK_ID"
 SEARCH_EMPTY_JSON="$(run_target "search \"no-match-xyz-123\" --json")"

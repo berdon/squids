@@ -143,6 +143,12 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("query", "priority^1", "--json")
 	mustOK("query", "status=open", "--json")
 
+	mustFail("stale", "--wat")
+	mustOK("stale", "--days", "1", "--json")
+	mustOK("stale", "-d", "1", "--json")
+	mustFail("orphans", "--wat")
+	mustOK("orphans", "--json")
+
 	mustOK("search", "x", "--query", "x", "--limit", "3", "--json")
 	mustOK("search", "x", "--json", "--status", "open", "--sort", "id", "--reverse", "--long")
 	mustOK("search", "x", "-x", "--json")
