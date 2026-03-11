@@ -129,4 +129,15 @@ if [[ $MISSING_CODE -eq 0 ]]; then
 fi
 assert_contains "$MISSING_OUT" "not"
 
+# 10) unknown flag should fail with usage-like error
+set +e
+BAD_FLAG_OUT="$(run_target "create 'x' --bogus-flag --json" 2>&1)"
+BAD_FLAG_CODE=$?
+set -e
+if [[ $BAD_FLAG_CODE -eq 0 ]]; then
+  echo "ASSERT FAILED: expected unknown flag to fail"
+  exit 1
+fi
+assert_contains "$BAD_FLAG_OUT" "unknown flag"
+
 echo "[parity] PASS"

@@ -12,14 +12,6 @@ import (
 	"gitea/auhanson/squids/internal/store"
 )
 
-type result struct {
-	Command       string `json:"command"`
-	OK            bool   `json:"ok"`
-	Message       string `json:"message,omitempty"`
-	DBPath        string `json:"db_path,omitempty"`
-	SchemaVersion int    `json:"schema_version,omitempty"`
-}
-
 func printJSON(v any) int {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
@@ -28,6 +20,16 @@ func printJSON(v any) int {
 		return 1
 	}
 	return 0
+}
+
+func failUsage(msg string) int {
+	fmt.Fprintln(os.Stderr, msg)
+	return 2
+}
+
+func failRuntime(msg string) int {
+	fmt.Fprintln(os.Stderr, msg)
+	return 1
 }
 
 func usage() {
@@ -76,136 +78,228 @@ func openTaskDB() (*sql.DB, string, error) {
 func cmdInit() int {
 	dbPath, err := dbPathFromEnvOrCwd()
 	if err != nil {
-		return printJSON(result{Command: "init", OK: false, Message: err.Error()})
+		return failRuntime(err.Error())
 	}
 	db, err := store.Open(dbPath)
 	if err != nil {
-		return printJSON(result{Command: "init", OK: false, Message: err.Error(), DBPath: dbPath})
+		return failRuntime(err.Error())
 	}
 	defer db.Close()
 	if err := store.Init(db); err != nil {
-		return printJSON(result{Command: "init", OK: false, Message: err.Error(), DBPath: dbPath})
+		return failRuntime(err.Error())
 	}
 	v, err := store.CurrentVersion(db)
 	if err != nil {
-		return printJSON(result{Command: "init", OK: false, Message: err.Error(), DBPath: dbPath})
+		return failRuntime(err.Error())
 	}
-	return printJSON(result{Command: "init", OK: true, DBPath: dbPath, SchemaVersion: v})
+	return printJSON(map[string]any{"command": "init", "ok": true, "db_path": dbPath, "schema_version": v})
 }
 
 func cmdReady() int {
 	dbPath, err := dbPathFromEnvOrCwd()
 	if err != nil {
-		return printJSON([]result{{Command: "ready", OK: false, Message: err.Error()}})
+		return failRuntime(err.Error())
 	}
 	db, err := store.Open(dbPath)
 	if err != nil {
-		return printJSON([]result{{Command: "ready", OK: false, Message: err.Error(), DBPath: dbPath}})
+		return failRuntime(err.Error())
 	}
 	defer db.Close()
 	if err := store.Init(db); err != nil {
-		return printJSON([]result{{Command: "ready", OK: false, Message: err.Error(), DBPath: dbPath}})
+		return failRuntime(err.Error())
 	}
 	if err := store.Ping(db); err != nil {
-		return printJSON([]result{{Command: "ready", OK: false, Message: err.Error(), DBPath: dbPath}})
+		return failRuntime(err.Error())
 	}
 	v, err := store.CurrentVersion(db)
 	if err != nil {
-		return printJSON([]result{{Command: "ready", OK: false, Message: err.Error(), DBPath: dbPath}})
+		return failRuntime(err.Error())
 	}
-	return printJSON([]result{{Command: "ready", OK: true, DBPath: dbPath, SchemaVersion: v}})
+	return printJSON([]map[string]any{{"command": "ready", "ok": true, "db_path": dbPath, "schema_version": v}})
 }
 
 func cmdCreate(args []string) int {
 	if len(args) == 0 {
-		return printJSON(result{Command: "create", OK: false, Message: "title is required"})
+		return failUsage("title is required")
 	}
 	in := store.CreateInput{Title: args[0], IssueType: "task"}
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--type":
-			if i+1 < len(args) { in.IssueType = args[i+1]; i++ }
+			if i+1 < len(args) {
+				in.IssueType = args[i+1]
+				i++
+			}
 		case "--priority":
-			if i+1 < len(args) { if p, err := strconv.Atoi(args[i+1]); err == nil { in.Priority = p }; i++ }
+			if i+1 < len(args) {
+				p, err := strconv.Atoi(args[i+1])
+				if err != nil {
+					return failUsage("invalid --priority")
+				}
+				in.Priority = p
+				i++
+			}
 		case "--description":
-			if i+1 < len(args) { in.Description = args[i+1]; i++ }
+			if i+1 < len(args) {
+				in.Description = args[i+1]
+				i++
+			}
+		case "--json":
+			// accepted, no-op
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
 		}
 	}
-	db, dbPath, err := openTaskDB()
-	if err != nil { return printJSON(result{Command:"create",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	defer db.Close()
 	t, err := store.CreateTask(db, in)
-	if err != nil { return printJSON(result{Command:"create",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	return printJSON(t)
 }
 
 func cmdShow(args []string) int {
-	if len(args) == 0 { return printJSON(result{Command:"show",OK:false,Message:"id is required"}) }
+	if len(args) == 0 {
+		return failUsage("id is required")
+	}
 	db, _, err := openTaskDB()
-	if err != nil { return printJSON(result{Command:"show",OK:false,Message:err.Error()}) }
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	defer db.Close()
 	t, err := store.ShowTask(db, args[0])
-	if err != nil { fmt.Fprintln(os.Stderr, err.Error()); return 1 }
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	return printJSON(t)
 }
 
-func cmdList() int {
-	db, dbPath, err := openTaskDB()
-	if err != nil { return printJSON(result{Command:"list",OK:false,Message:err.Error(),DBPath:dbPath}) }
+func cmdList(args []string) int {
+	for _, a := range args {
+		if a == "--json" || a == "--flat" || a == "--no-pager" {
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			return failUsage("unknown flag: " + a)
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	defer db.Close()
 	tasks, err := store.ListTasks(db)
-	if err != nil { return printJSON(result{Command:"list",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	return printJSON(tasks)
 }
 
 func cmdUpdate(args []string) int {
-	if len(args) == 0 { return printJSON(result{Command:"update",OK:false,Message:"id is required"}) }
+	if len(args) == 0 {
+		return failUsage("id is required")
+	}
 	id := args[0]
 	in := store.UpdateInput{SetMetadata: map[string]string{}}
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--status":
-			if i+1 < len(args) { v := args[i+1]; in.Status = &v; i++ }
+			if i+1 < len(args) {
+				v := args[i+1]
+				in.Status = &v
+				i++
+			}
 		case "--assignee":
-			if i+1 < len(args) { v := args[i+1]; in.Assignee = &v; i++ }
+			if i+1 < len(args) {
+				v := args[i+1]
+				in.Assignee = &v
+				i++
+			}
 		case "--add-label":
-			if i+1 < len(args) { in.AddLabels = append(in.AddLabels, args[i+1]); i++ }
+			if i+1 < len(args) {
+				in.AddLabels = append(in.AddLabels, args[i+1])
+				i++
+			}
 		case "--set-metadata":
-			if i+1 < len(args) { kv := strings.SplitN(args[i+1], "=", 2); if len(kv) == 2 { in.SetMetadata[kv[0]] = kv[1] }; i++ }
+			if i+1 < len(args) {
+				kv := strings.SplitN(args[i+1], "=", 2)
+				if len(kv) != 2 {
+					return failUsage("invalid --set-metadata value")
+				}
+				in.SetMetadata[kv[0]] = kv[1]
+				i++
+			}
 		case "--claim":
 			in.Claim = true
+		case "--json":
+			// accepted, no-op
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
 		}
 	}
-	db, dbPath, err := openTaskDB()
-	if err != nil { return printJSON(result{Command:"update",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	defer db.Close()
 	t, err := store.UpdateTask(db, id, in)
-	if err != nil { return printJSON(result{Command:"update",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	return printJSON(t)
 }
 
 func cmdClose(args []string) int {
-	if len(args) == 0 { return printJSON(result{Command:"close",OK:false,Message:"id is required"}) }
+	if len(args) == 0 {
+		return failUsage("id is required")
+	}
 	id := args[0]
 	reason := ""
 	for i := 1; i < len(args); i++ {
-		if args[i] == "--reason" && i+1 < len(args) { reason = args[i+1]; i++ }
+		switch args[i] {
+		case "--reason":
+			if i+1 < len(args) {
+				reason = args[i+1]
+				i++
+			}
+		case "--json":
+			// accepted, no-op
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return failUsage("unknown flag: " + args[i])
+			}
+		}
 	}
-	db, dbPath, err := openTaskDB()
-	if err != nil { return printJSON(result{Command:"close",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	defer db.Close()
 	t, err := store.CloseTask(db, id, reason)
-	if err != nil { return printJSON(result{Command:"close",OK:false,Message:err.Error(),DBPath:dbPath}) }
+	if err != nil {
+		return failRuntime(err.Error())
+	}
 	return printJSON(t)
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		usage(); os.Exit(2)
+		usage()
+		os.Exit(2)
 	}
+
 	switch os.Args[1] {
 	case "-h", "--help", "help":
-		usage(); os.Exit(0)
+		usage()
+		os.Exit(0)
 	case "init":
 		os.Exit(cmdInit())
 	case "ready":
@@ -215,7 +309,7 @@ func main() {
 	case "show":
 		os.Exit(cmdShow(os.Args[2:]))
 	case "list":
-		os.Exit(cmdList())
+		os.Exit(cmdList(os.Args[2:]))
 	case "update":
 		os.Exit(cmdUpdate(os.Args[2:]))
 	case "close":
