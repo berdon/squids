@@ -25,6 +25,13 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 		}
 	}
 
+	mustOK("help")
+	mustOK("help", "create")
+	mustOK("help", "--all")
+	mustOK("help", "--help")
+	mustOK("help", "--actor", "tester")
+	mustFail("help", "--wat")
+	mustFail("help", "create", "list")
 	mustOK("init", "--json")
 	mustOK("ready", "--json")
 

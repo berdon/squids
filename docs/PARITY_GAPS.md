@@ -1,16 +1,16 @@
 # bd ↔ sq Deep Parity Matrix (Command/Flag/Subcommand Gaps)
 
-_Generated: 2026-03-11 06:08_
+_Generated: 2026-03-11 06:11_
 
 ## Top-level parity summary
 - bd commands: **93**
-- sq commands: **30**
-- Shared commands: **30**
-- Missing in sq: **63**
+- sq commands: **31**
+- Shared commands: **31**
+- Missing in sq: **62**
 
 ### Missing top-level commands in sq
 
-`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `help`, `history`, `hooks`, `human`, `info`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `where`, `worktree`
+`admin`, `agent`, `audit`, `backup`, `branch`, `compact`, `completion`, `config`, `cook`, `create-form`, `diff`, `doctor`, `dolt`, `duplicates`, `edit`, `epic`, `export`, `federation`, `find-duplicates`, `flatten`, `forget`, `formula`, `gate`, `gc`, `gitlab`, `graph`, `history`, `hooks`, `human`, `info`, `jira`, `kv`, `linear`, `lint`, `mail`, `memories`, `merge-slot`, `migrate`, `mol`, `move`, `onboard`, `preflight`, `prime`, `promote`, `purge`, `quickstart`, `recall`, `refile`, `remember`, `repo`, `restore`, `set-state`, `setup`, `ship`, `slot`, `sql`, `state`, `swarm`, `upgrade`, `vc`, `where`, `worktree`
 
 ## Shared commands: flag/subcommand gaps
 
@@ -26,6 +26,7 @@ _Generated: 2026-03-11 06:08_
 | `delete` | 16 | — |
 | `dep` | 15 | `cycles`, `relate`, `tree`, `unrelate` |
 | `duplicate` | 12 | — |
+| `help` | 0 | — |
 | `init` | 29 | — |
 | `label` | 13 | `propagate` |
 | `list` | 73 | — |
@@ -87,6 +88,10 @@ _Generated: 2026-03-11 06:08_
 
 ### `duplicate`
 - Missing flags in sq (12): `--actor`, `--db`, `--dolt-auto-commit`, `--help`, `--profile`, `--quiet`, `--readonly`, `--sandbox`, `--verbose`, `-h`, `-q`, `-v`
+- Missing subcommands in sq: none
+
+### `help`
+- Missing flags in sq (0): none
 - Missing subcommands in sq: none
 
 ### `init`

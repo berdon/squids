@@ -42,6 +42,7 @@ func usage() {
 	fmt.Println("  sq <command> [args]")
 	fmt.Println("")
 	fmt.Println("Commands:")
+	fmt.Println("  help    Show help for commands")
 	fmt.Println("  init    Initialize task storage")
 	fmt.Println("  ready   Check backend readiness")
 	fmt.Println("  create  Create a task")

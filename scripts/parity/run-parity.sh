@@ -84,6 +84,14 @@ assert_json_status() {
 echo "[parity] target=$TARGET_BIN"
 cd "$WORK_DIR"
 
+# 0) help parity
+HELP_TXT="$(run_target "help")"
+assert_contains "$HELP_TXT" "Usage"
+HELP_SUB_TXT="$(run_target "help create")"
+assert_contains "$HELP_SUB_TXT" "create"
+run_target "help --all" >/dev/null
+run_target "help --actor tester" >/dev/null
+
 # 1) init + ready
 run_target "init --prefix bd --json" >/dev/null
 READY_JSON="$(run_target "ready --json")"

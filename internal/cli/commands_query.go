@@ -11,6 +11,52 @@ import (
 
 var Version = "dev"
 
+func cmdHelp(args []string) int {
+	all := false
+	target := ""
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--all":
+			all = true
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Help provides help for any command in the application.")
+			_, _ = fmt.Fprintln(os.Stdout, "Simply type sq help [path to command] for full details.")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq help [command] [flags]")
+			return 0
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox", "--json":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			if target == "" {
+				target = a
+			} else {
+				return failUsage("help accepts at most one command")
+			}
+		}
+	}
+
+	if all {
+		usage()
+		return 0
+	}
+	if target != "" {
+		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
+		_, _ = fmt.Fprintln(os.Stdout, "Usage: sq "+target+" [args]")
+		return 0
+	}
+	usage()
+	return 0
+}
+
 func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
