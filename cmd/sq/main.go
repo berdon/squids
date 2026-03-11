@@ -49,6 +49,7 @@ func usage() {
 	fmt.Println("  reopen  Reopen a task")
 	fmt.Println("  delete  Delete a task")
 	fmt.Println("  label   Manage labels")
+	fmt.Println("  dep     Manage dependencies")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
@@ -382,6 +383,36 @@ func cmdLabel(args []string) int {
 	}
 }
 
+func cmdDep(args []string) int {
+	if len(args) == 0 {
+		return failUsage("dep subcommand required")
+	}
+	sub := args[0]
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	switch sub {
+	case "add":
+		if len(args) < 3 { return failUsage("usage: sq dep add <issue-id> <depends-on-id> [--json]") }
+		if err := store.AddDependency(db, args[1], args[2], "blocks"); err != nil { return failRuntime(err.Error()) }
+		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "type": "blocks"})
+	case "remove", "rm":
+		if len(args) < 3 { return failUsage("usage: sq dep remove <issue-id> <depends-on-id> [--json]") }
+		if err := store.RemoveDependency(db, args[1], args[2]); err != nil { return failRuntime(err.Error()) }
+		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "removed": true})
+	case "list":
+		if len(args) < 2 { return failUsage("usage: sq dep list <issue-id> [--json]") }
+		deps, err := store.ListDependencies(db, args[1])
+		if err != nil { return failRuntime(err.Error()) }
+		return printJSON(deps)
+	default:
+		return failUsage("unknown dep subcommand: " + sub)
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -412,6 +443,8 @@ func main() {
 		os.Exit(cmdDelete(os.Args[2:]))
 	case "label":
 		os.Exit(cmdLabel(os.Args[2:]))
+	case "dep":
+		os.Exit(cmdDep(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		usage()

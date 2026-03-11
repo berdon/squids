@@ -141,6 +141,17 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 	}
 
 	if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS dependencies (
+  issue_id TEXT NOT NULL,
+  depends_on_id TEXT NOT NULL,
+  dep_type TEXT NOT NULL DEFAULT 'blocks',
+  PRIMARY KEY(issue_id, depends_on_id, dep_type)
+);
+`); err != nil {
+		return fmt.Errorf("create dependencies: %w", err)
+	}
+
+	if _, err := tx.Exec(`
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -500,5 +511,73 @@ func ListAllLabels(db *sql.DB) ([]string, error) {
 		out = append(out, l)
 	}
 	sort.Strings(out)
+	return out, nil
+}
+
+func syncTaskDepsJSON(db *sql.DB, issueID string) error {
+	rows, err := db.Query(`SELECT depends_on_id FROM dependencies WHERE issue_id=? ORDER BY depends_on_id`, issueID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	deps := make([]string, 0)
+	for rows.Next() {
+		var d string
+		if err := rows.Scan(&d); err != nil {
+			return err
+		}
+		deps = append(deps, d)
+	}
+	raw, _ := json.Marshal(deps)
+	_, err = db.Exec(`UPDATE tasks SET deps_json=?,updated_at=? WHERE id=?`, string(raw), time.Now().UTC().Format(time.RFC3339), issueID)
+	return err
+}
+
+func AddDependency(db *sql.DB, issueID, dependsOnID, depType string) error {
+	if depType == "" {
+		depType = "blocks"
+	}
+	if _, err := ShowTask(db, issueID); err != nil {
+		return err
+	}
+	if _, err := ShowTask(db, dependsOnID); err != nil {
+		return err
+	}
+	_, err := db.Exec(`INSERT OR IGNORE INTO dependencies(issue_id,depends_on_id,dep_type) VALUES(?,?,?)`, issueID, dependsOnID, depType)
+	if err != nil {
+		return err
+	}
+	return syncTaskDepsJSON(db, issueID)
+}
+
+func RemoveDependency(db *sql.DB, issueID, dependsOnID string) error {
+	res, err := db.Exec(`DELETE FROM dependencies WHERE issue_id=? AND depends_on_id=?`, issueID, dependsOnID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("dependency not found: %s -> %s", issueID, dependsOnID)
+	}
+	return syncTaskDepsJSON(db, issueID)
+}
+
+func ListDependencies(db *sql.DB, issueID string) ([]string, error) {
+	rows, err := db.Query(`SELECT depends_on_id FROM dependencies WHERE issue_id=? ORDER BY depends_on_id`, issueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]string, 0)
+	for rows.Next() {
+		var d string
+		if err := rows.Scan(&d); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
 	return out, nil
 }

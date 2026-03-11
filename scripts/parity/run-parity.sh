@@ -121,6 +121,19 @@ SECOND_ID="$(json_field "$SECOND_JSON" "id")"
 DEP_JSON="$(run_target "update $TASK_ID --set-metadata upstream=$SECOND_ID --json")"
 assert_contains "$DEP_JSON" "$SECOND_ID"
 
+# 6b) dep command family parity
+DEP_ADD_JSON="$(run_target "dep add $TASK_ID $SECOND_ID --json")"
+assert_contains "$DEP_ADD_JSON" "$SECOND_ID"
+DEP_LIST_JSON="$(run_target "dep list $TASK_ID --json")"
+assert_contains "$DEP_LIST_JSON" "$SECOND_ID"
+DEP_REMOVE_JSON="$(run_target "dep remove $TASK_ID $SECOND_ID --json")"
+assert_contains "$DEP_REMOVE_JSON" "removed"
+DEP_LIST_AFTER_REMOVE="$(run_target "dep list $TASK_ID --json")"
+if [[ "$DEP_LIST_AFTER_REMOVE" == *"$SECOND_ID"* ]]; then
+  echo "ASSERT FAILED: expected dependency to be removed"
+  exit 1
+fi
+
 # 7) assignee clear path (empty assignee should be accepted)
 CLEAR_JSON="$(run_target "update $TASK_ID --assignee '' --status open --json")"
 assert_json_status "$CLEAR_JSON" "open"
