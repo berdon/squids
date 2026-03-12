@@ -58,6 +58,10 @@ func cmdHelp(args []string) int {
 			printQueryHelp()
 			return 0
 		}
+		if target == "gate" {
+			printGateHelp()
+			return 0
+		}
 		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
 		_, _ = fmt.Fprintln(os.Stdout, "Usage: sq "+target+" [args]")
 		return 0
@@ -169,6 +173,137 @@ func cmdQuery(args []string) int {
 		_, _ = fmt.Fprintf(os.Stdout, "%s %s [%s P%d] [%s]%s - %s\n", statusIcon, it.ID, statusBadge, it.Priority, issueType, assignee, it.Title)
 	}
 	return 0
+}
+
+func printGateHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Manage async workflow gates (compat surface).")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq gate list [--all] [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq gate show <id> [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq gate resolve <id> [--reason <text>] [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq gate check [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  --json   output JSON")
+	_, _ = fmt.Fprintln(os.Stdout, "  --all    include closed gates (list)")
+}
+
+func cmdGate(args []string) int {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
+		printGateHelp()
+		return 0
+	}
+	useJSON := false
+	for _, a := range args {
+		if a == "--json" {
+			useJSON = true
+		}
+	}
+	db, _, err := openTaskDB()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	defer db.Close()
+
+	sub := args[0]
+	switch sub {
+	case "list":
+		includeAll := false
+		for _, a := range args[1:] {
+			if a == "--all" {
+				includeAll = true
+			}
+		}
+		all, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		gates := make([]store.Task, 0)
+		for _, t := range all {
+			if t.IssueType != "gate" {
+				continue
+			}
+			if !includeAll && t.Status == "closed" {
+				continue
+			}
+			gates = append(gates, t)
+		}
+		if useJSON {
+			return printJSON(gates)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Found %d gates:\n", len(gates))
+		for _, g := range gates {
+			icon := "○"
+			if g.Status == "closed" {
+				icon = "✓"
+			}
+			_, _ = fmt.Fprintf(os.Stdout, "%s %s [%s] - %s\n", icon, g.ID, g.Status, g.Title)
+		}
+		return 0
+	case "show":
+		if len(args) < 2 {
+			return failUsage("usage: sq gate show <id> [--json]")
+		}
+		g, err := store.ShowTask(db, args[1])
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		if g.IssueType != "gate" {
+			return failUsage("issue is not a gate: " + args[1])
+		}
+		if useJSON {
+			return printJSON(g)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Gate %s\n  status: %s\n  title: %s\n", g.ID, g.Status, g.Title)
+		return 0
+	case "resolve":
+		if len(args) < 2 {
+			return failUsage("usage: sq gate resolve <id> [--reason <text>] [--json]")
+		}
+		reason := "Gate resolved"
+		for i := 2; i < len(args); i++ {
+			if args[i] == "--reason" && i+1 < len(args) {
+				reason = args[i+1]
+				i++
+			}
+		}
+		g, err := store.ShowTask(db, args[1])
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		if g.IssueType != "gate" {
+			return failUsage("issue is not a gate: " + args[1])
+		}
+		closed, err := store.CloseTask(db, args[1], reason)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		if useJSON {
+			return printJSON(closed)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "✓ Resolved gate %s\n", args[1])
+		return 0
+	case "check":
+		all, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		openGates := 0
+		for _, t := range all {
+			if t.IssueType == "gate" && t.Status != "closed" {
+				openGates++
+			}
+		}
+		payload := map[string]any{"open_gates": openGates, "resolved": 0}
+		if useJSON {
+			return printJSON(payload)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Gate check complete: open=%d resolved=0\n", openGates)
+		return 0
+	default:
+		return failUsage("unknown gate subcommand: " + sub)
+	}
 }
 
 func cmdRestore(args []string) int {

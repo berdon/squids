@@ -71,6 +71,7 @@ func usage() {
 	fmt.Println("  stale   List stale open tasks")
 	fmt.Println("  orphans List tasks with orphaned dependency refs")
 	fmt.Println("  search  Search tasks")
+	fmt.Println("  gate    Manage workflow gates (compat surface)")
 	fmt.Println("  restore Compatibility command (sqlite backend does not support Dolt restore)")
 	fmt.Println("  count   Count tasks")
 	fmt.Println("  status  Show status summary")

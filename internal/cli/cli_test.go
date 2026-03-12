@@ -101,6 +101,10 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "sq query") {
 		t.Fatalf("query --help failed code=%d out=%q", code, out)
 	}
+	code, out, _ = runCLI(t, db, "help", "gate")
+	if code != 0 || !strings.Contains(out, "sq gate list") {
+		t.Fatalf("help gate failed code=%d out=%q", code, out)
+	}
 
 	code, _, err := runCLI(t, db, "nope")
 	if code != 2 || !strings.Contains(err, "unknown command") {
@@ -222,6 +226,10 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 		t.Fatalf("create replacement failed")
 	}
 	replID := firstID(t, out)
+	if code, out, _ = runCLI(t, db, "create", "Manual gate", "--type", "gate", "--json"); code != 0 {
+		t.Fatalf("create gate failed")
+	}
+	gateID := firstID(t, out)
 	if code, _, _ = runCLI(t, db, "supersede", aID, "--with", replID, "--json"); code != 0 {
 		t.Fatalf("supersede failed")
 	}
@@ -240,6 +248,24 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	}
 	if code, _, _ = runCLI(t, db, "count", "--status", "open", "--json"); code != 0 {
 		t.Fatalf("count failed")
+	}
+	if code, out, _ = runCLI(t, db, "gate", "list"); code != 0 || !strings.Contains(out, "Found") {
+		t.Fatalf("gate list human failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "gate", "list", "--json"); code != 0 || !strings.Contains(out, gateID) {
+		t.Fatalf("gate list json failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "gate", "show", gateID); code != 0 || !strings.Contains(out, "Gate "+gateID) {
+		t.Fatalf("gate show human failed code=%d out=%q", code, out)
+	}
+	if code, _, _ = runCLI(t, db, "gate", "check", "--json"); code != 0 {
+		t.Fatalf("gate check failed")
+	}
+	if code, out, _ = runCLI(t, db, "gate", "resolve", gateID); code != 0 || !strings.Contains(out, "Resolved gate") {
+		t.Fatalf("gate resolve human failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "gate", "list", "--all", "--json"); code != 0 || !strings.Contains(out, gateID) {
+		t.Fatalf("gate list --all json failed code=%d out=%q", code, out)
 	}
 	if code, _, _ = runCLI(t, db, "status", "--json"); code != 0 {
 		t.Fatalf("status failed")
@@ -278,6 +304,8 @@ func TestRun_ErrorFlagsAndValidation(t *testing.T) {
 		{"duplicate", "x", "--json"},
 		{"supersede", "x", "--json"},
 		{"types", "--bad"},
+		{"gate", "wat"},
+		{"gate", "show"},
 	}
 	for _, c := range cases {
 		code, _, _ := runCLI(t, db, c...)
