@@ -89,12 +89,16 @@ STATUS_BEFORE="$RUN_OUT"
 
 run_capture help_cmd "$SQ_BIN" help types
 assert_eq "$RUN_CODE" "0" "sq help types"
-assert_contains "$RUN_OUT" "Help for command: types" "help command output"
-assert_contains "$RUN_OUT" "Usage: sq types [args]" "help command usage"
+assert_contains "$RUN_OUT" "sq types [flags]" "help command usage"
+assert_contains "$RUN_OUT" "--json" "help command json flag"
+HELP_CMD_OUT="$RUN_OUT"
 
 run_capture help_flag "$SQ_BIN" types --help
-assert_eq "$RUN_CODE" "2" "sq types --help observed behavior"
-assert_contains "$RUN_ERR" "unknown flag: --help" "types --help error"
+assert_eq "$RUN_CODE" "0" "sq types --help should succeed"
+assert_contains "$RUN_OUT" "sq types [flags]" "types --help usage"
+assert_contains "$RUN_OUT" "--json" "types --help json flag"
+HELP_FLAG_OUT="$RUN_OUT"
+assert_eq "$HELP_FLAG_OUT" "$HELP_CMD_OUT" "help command and --help parity"
 
 run_capture default "$SQ_BIN" types
 assert_eq "$RUN_CODE" "0" "sq types default"

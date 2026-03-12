@@ -83,13 +83,15 @@ count_before="$(run_expect_ok count-before count --json)"
 status_before="$(run_expect_ok status-before status --json)"
 
 help_out="$(run_expect_ok help-version help version)"
-assert_contains "$help_out" "Help for command: version"
-assert_contains "$help_out" "Usage: sq version [args]"
+assert_contains "$help_out" "Print version information"
+assert_contains "$help_out" "sq version [flags]"
+assert_contains "$help_out" "--dolt-auto-commit"
 
 help_flag_out="$(run_expect_ok version-help version --help)"
 assert_contains "$help_flag_out" "Print version information"
 assert_contains "$help_flag_out" "sq version [flags]"
 assert_contains "$help_flag_out" "--dolt-auto-commit"
+assert_eq "$help_out" "$help_flag_out"
 
 version_out="$(run_expect_ok version-default version)"
 assert_contains "$version_out" "sq version"

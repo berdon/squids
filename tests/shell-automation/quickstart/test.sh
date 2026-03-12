@@ -35,6 +35,24 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local haystack="$1"
+  local needle="$2"
+  local context="$3"
+  if [[ "$haystack" == *"$needle"* ]]; then
+    fail "$context: did not expect '$needle' in output"
+  fi
+}
+
+assert_json_valid() {
+  local payload="$1"
+  local context="$2"
+  JSON_INPUT="$payload" python3 - <<'PY' || exit 1
+import json, os
+json.loads(os.environ["JSON_INPUT"])
+PY
+}
+
 run_capture() {
   local name="$1"
   shift
@@ -89,11 +107,14 @@ assert_contains "$RUN_OUT" "sq quickstart" "default banner"
 assert_contains "$RUN_OUT" "GETTING STARTED" "default getting started section"
 assert_contains "$RUN_OUT" "sq create \"Fix login bug\"" "default create example"
 assert_contains "$RUN_OUT" "sq ready" "default ready example"
+assert_contains "$RUN_OUT" ".sq" "quickstart should document .sq storage path"
+assert_not_contains "$RUN_OUT" "sq dep tree" "quickstart should avoid unsupported dep tree examples"
+assert_not_contains "$RUN_OUT" "sq dep cycles" "quickstart should avoid unsupported dep cycles examples"
 DEFAULT_OUT="$RUN_OUT"
 
 run_capture json "$SQ_BIN" quickstart --json
 assert_eq "$RUN_CODE" "0" "sq quickstart --json"
-assert_eq "$RUN_OUT" "$DEFAULT_OUT" "--json currently matches default output"
+assert_json_valid "$RUN_OUT" "quickstart --json should emit valid JSON"
 
 run_capture actor "$SQ_BIN" quickstart --actor tester
 assert_eq "$RUN_CODE" "0" "sq quickstart --actor"
