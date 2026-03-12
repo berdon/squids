@@ -28,6 +28,12 @@ func cmdHelp(args []string) int {
 			_, _ = fmt.Fprintln(os.Stdout, "")
 			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
 			_, _ = fmt.Fprintln(os.Stdout, "  sq help [command] [flags]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "      --all    Show help for all commands in a single document")
+			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for help")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			printGlobalFlags()
 			return 0
 		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox", "--json":
 			// accepted compatibility flags (no-op)
@@ -52,20 +58,24 @@ func cmdHelp(args []string) int {
 		return 0
 	}
 	if target != "" {
-		if target == "label" {
+		switch target {
+		case "create":
+			printCreateHelp()
+			return 0
+		case "label":
 			printLabelHelp()
 			return 0
-		}
-		if target == "query" {
+		case "query":
 			printQueryHelp()
 			return 0
-		}
-		if target == "gate" {
+		case "gate":
 			printGateHelp()
 			return 0
-		}
-		if target == "backup" {
+		case "backup":
 			printBackupHelp()
+			return 0
+		case "quickstart":
+			printQuickstartHelp()
 			return 0
 		}
 		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
@@ -74,6 +84,23 @@ func cmdHelp(args []string) int {
 	}
 	usage()
 	return 0
+}
+
+func printCreateHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Create a task")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq create [title] [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -d, --description string   Task description")
+	_, _ = fmt.Fprintln(os.Stdout, "      --deps strings         Dependencies in format 'type:id' or 'id'")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help                 help for create")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json                 Output in JSON format")
+	_, _ = fmt.Fprintln(os.Stdout, "  -p, --priority int         Priority (0-4, 0=highest)")
+	_, _ = fmt.Fprintln(os.Stdout, "  -t, --type string          Issue type (bug|feature|task|epic|chore)")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
 }
 
 func printHelpAll() {
@@ -649,6 +676,23 @@ func cmdVersion(args []string) int {
 			jsonOut = true
 		case "--help", "-h":
 			_, _ = fmt.Fprintln(os.Stdout, "Print version information")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq version [flags]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for version")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Global Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --db string                 Database path (default: auto-discover .sq/store.db)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --dolt-auto-commit string   Accepted compatibility flag (off|on|batch)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --json                      Output in JSON format")
+			_, _ = fmt.Fprintln(os.Stdout, "      --profile                   Generate CPU profile for performance analysis")
+			_, _ = fmt.Fprintln(os.Stdout, "  -q, --quiet                     Suppress non-essential output (errors only)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --sandbox                   Sandbox mode: disables auto-sync")
+			_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
 			return 0
 		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
@@ -664,9 +708,9 @@ func cmdVersion(args []string) int {
 		}
 	}
 	if jsonOut {
-		return printJSON(map[string]any{"version": Version})
+		return printJSON(map[string]any{"branch": "v" + Version, "build": "source", "version": Version})
 	}
-	_, err := fmt.Fprintf(os.Stdout, "sq version %s\n", Version)
+	_, err := fmt.Fprintf(os.Stdout, "sq version %s (source)\n", Version)
 	if err != nil {
 		return failRuntime(err.Error())
 	}
@@ -938,12 +982,33 @@ func cmdHuman(args []string) int {
 	}
 }
 
+func printQuickstartHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Display a quick start guide showing common sq workflows.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq quickstart [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for quickstart")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Global Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --db string                 Database path (default: auto-discover .squids/*.db)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --dolt-auto-commit string   Compatibility no-op accepted for bd parity")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json                      Output in JSON format")
+	_, _ = fmt.Fprintln(os.Stdout, "      --profile                   Generate CPU profile for performance analysis")
+	_, _ = fmt.Fprintln(os.Stdout, "  -q, --quiet                     Suppress non-essential output (errors only)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --sandbox                   Sandbox mode: disables auto-sync")
+	_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
+}
+
 func cmdQuickstart(args []string) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--help", "-h":
-			_, _ = fmt.Fprintln(os.Stdout, "Display a quick start guide showing common sq workflows.")
+			printQuickstartHelp()
 			return 0
 		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
@@ -957,12 +1022,68 @@ func cmdQuickstart(args []string) int {
 			}
 		}
 	}
-	_, _ = fmt.Fprintln(os.Stdout, "sq quickstart")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq init --json")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq create \"My first issue\" --type task --priority 2 --json")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq ready --json")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq update <id> --claim --json")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq close <id> --reason \"Done\" --json")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "sq - squids task CLI")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Issues chained together like squids.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "GETTING STARTED")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq init   Initialize sq in your project")
+	_, _ = fmt.Fprintln(os.Stdout, "            Creates .squids/ directory with project-specific database")
+	_, _ = fmt.Fprintln(os.Stdout, "            Issue IDs use the bd-<hash> format for compatibility")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "CREATING ISSUES")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq create \"Fix login bug\"")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq create \"Add auth\" -p 0 -t feature")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq create \"Write tests\" -d \"Unit tests for auth\" --assignee alice")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "VIEWING ISSUES")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq list       List all issues")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq list --status open  List by status")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq list --priority 0  List by priority (0-4, 0=highest)")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq show bd-1       Show issue details")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "MANAGING DEPENDENCIES")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq dep add bd-1 bd-2     Add dependency (bd-2 blocks bd-1)")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq dep tree bd-1  Visualize dependency tree")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq dep cycles      Detect circular dependencies")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "DEPENDENCY TYPES")
+	_, _ = fmt.Fprintln(os.Stdout, "  blocks  Task B must complete before task A")
+	_, _ = fmt.Fprintln(os.Stdout, "  related  Soft connection, doesn't block progress")
+	_, _ = fmt.Fprintln(os.Stdout, "  parent-child  Epic/subtask hierarchical relationship")
+	_, _ = fmt.Fprintln(os.Stdout, "  discovered-from  Auto-created when AI discovers related work")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "READY WORK")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq ready       Show issues ready to work on")
+	_, _ = fmt.Fprintln(os.Stdout, "            Ready = status is 'open' AND no blocking dependencies")
+	_, _ = fmt.Fprintln(os.Stdout, "            Perfect for agents to claim next work!")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "UPDATING ISSUES")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq update bd-1 --claim")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq update bd-1 --priority 0")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq update bd-1 --assignee bob")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "CLOSING ISSUES")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq close bd-1")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq close bd-2 bd-3 --reason \"Fixed in PR #42\"")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "DATABASE LOCATION")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq automatically discovers your database:")
+	_, _ = fmt.Fprintln(os.Stdout, "    1. --db /path/to/db.db flag")
+	_, _ = fmt.Fprintln(os.Stdout, "    2. $SQ_DB_PATH environment variable")
+	_, _ = fmt.Fprintln(os.Stdout, "    3. .squids/*.db in current directory")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "AGENT INTEGRATION")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq is designed for AI-supervised workflows:")
+	_, _ = fmt.Fprintln(os.Stdout, "    • Agents create issues when discovering new work")
+	_, _ = fmt.Fprintln(os.Stdout, "    • sq ready shows unblocked work ready to claim")
+	_, _ = fmt.Fprintln(os.Stdout, "    • Use --json flags for programmatic parsing")
+	_, _ = fmt.Fprintln(os.Stdout, "    • Dependencies prevent agents from duplicating effort")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Ready to start!")
+	_, _ = fmt.Fprintln(os.Stdout, "Run sq create \"My first issue\" to create your first issue.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
 	return 0
 }
 

@@ -110,7 +110,25 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("children", id, "--json")
 
 	mustFail("blocked", "--wat")
-	mustOK("blocked", "--parent", id, "--json")
+	blockedParent := firstID(t, mustOK("create", "blocked parent", "--type", "epic", "--json"))
+	blockedChild := firstID(t, mustOK("create", "blocked child", "--deps", "parent-child:"+blockedParent, "--json"))
+	blockedGrandchild := firstID(t, mustOK("create", "blocked grandchild", "--deps", "parent-child:"+blockedChild, "--json"))
+	otherBlocked := firstID(t, mustOK("create", "other blocked", "--json"))
+	openBlocker := firstID(t, mustOK("create", "blocker", "--json"))
+	mustOK("dep", "add", openBlocker, blockedChild, "--json")
+	mustOK("dep", "add", openBlocker, blockedGrandchild, "--json")
+	mustOK("dep", "add", openBlocker, otherBlocked, "--json")
+	blockedOut := mustOK("blocked", "--parent", blockedParent, "--json")
+	if !strings.Contains(blockedOut, blockedChild) || !strings.Contains(blockedOut, blockedGrandchild) {
+		t.Fatalf("expected descendants in blocked output: %q", blockedOut)
+	}
+	if strings.Contains(blockedOut, otherBlocked) {
+		t.Fatalf("did not expect non-descendant in blocked output: %q", blockedOut)
+	}
+	blockedHelp := mustOK("blocked", "--help")
+	if !strings.Contains(blockedHelp, "Filter to descendants of this bead/epic") || !strings.Contains(blockedHelp, "--json") {
+		t.Fatalf("unexpected blocked help: %q", blockedHelp)
+	}
 
 	mustFail("defer")
 	mustFail("defer", "--json")
@@ -167,11 +185,17 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("status", "--json")
 	mustFail("version", "--wat")
 	v := mustOK("version")
-	if !strings.Contains(v, "sq version") {
+	if !strings.Contains(v, "sq version") || !strings.Contains(v, "(source)") {
 		t.Fatalf("expected plain version output, got %q", v)
 	}
-	mustOK("version", "--json")
-	mustOK("version", "--help")
+	versionJSON := mustOK("version", "--json")
+	if !strings.Contains(versionJSON, `"version":`) || !strings.Contains(versionJSON, `"branch":`) || !strings.Contains(versionJSON, `"build":`) {
+		t.Fatalf("expected structured version json, got %q", versionJSON)
+	}
+	help := mustOK("version", "--help")
+	if !strings.Contains(help, "Usage:") || !strings.Contains(help, "Global Flags:") {
+		t.Fatalf("expected cobra-style version help, got %q", help)
+	}
 	mustOK("version", "-h")
 	mustOK("version", "--quiet")
 	mustOK("version", "--verbose")
@@ -214,8 +238,14 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("human", "dismiss", human2, "--reason", "n/a", "--json")
 	mustFail("human", "wat")
 
-	mustOK("quickstart")
-	mustOK("quickstart", "--help")
+	quickstart := mustOK("quickstart")
+	if !strings.Contains(quickstart, "GETTING STARTED") || !strings.Contains(quickstart, "READY WORK") {
+		t.Fatalf("expected detailed quickstart output, got %q", quickstart)
+	}
+	quickstartHelp := mustOK("quickstart", "--help")
+	if !strings.Contains(quickstartHelp, "Usage:") || !strings.Contains(quickstartHelp, "Global Flags:") {
+		t.Fatalf("expected quickstart help output, got %q", quickstartHelp)
+	}
 	mustOK("quickstart", "--actor", "tester")
 	mustOK("quickstart", "--json")
 	mustFail("quickstart", "--wat")

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"strconv"
@@ -338,14 +339,43 @@ func cmdChildren(args []string) int {
 }
 
 func cmdBlocked(args []string) int {
+	parentID := ""
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
-		case "--json":
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			continue
+		case "--help", "-h":
+			fmt.Println("Show blocked issues")
+			fmt.Println("")
+			fmt.Println("Usage:")
+			fmt.Println("  sq blocked [flags]")
+			fmt.Println("")
+			fmt.Println("Flags:")
+			fmt.Println("  -h, --help            help for blocked")
+			fmt.Println("      --parent string   Filter to descendants of this bead/epic")
+			fmt.Println("")
+			fmt.Println("Global Flags:")
+			fmt.Println("      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
+			fmt.Println("      --db string                 Database path (default: auto-discover .squids/*.db)")
+			fmt.Println("      --dolt-auto-commit string   Accepted compatibility flag (sqlite backend ignores it)")
+			fmt.Println("      --json                      Output in JSON format")
+			fmt.Println("      --profile                   Generate CPU profile for performance analysis")
+			fmt.Println("  -q, --quiet                     Suppress non-essential output (errors only)")
+			fmt.Println("      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
+			fmt.Println("      --sandbox                   Sandbox mode: disables auto-sync")
+			fmt.Println("  -v, --verbose                   Enable verbose/debug output")
+			return 0
 		case "--parent":
-			if i+1 < len(args) {
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for --parent")
 			}
+			parentID = args[i+1]
+			i++
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + args[i])
+			}
+			i++
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return failUsage("unknown flag: " + args[i])
@@ -361,7 +391,41 @@ func cmdBlocked(args []string) int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(items)
+	if parentID == "" {
+		return printJSON(items)
+	}
+	descendants, err := blockedDescendants(db, parentID)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	filtered := make([]store.BlockedItem, 0, len(items))
+	for _, item := range items {
+		if descendants[item.ID] {
+			filtered = append(filtered, item)
+		}
+	}
+	return printJSON(filtered)
+}
+
+func blockedDescendants(db *sql.DB, parentID string) (map[string]bool, error) {
+	seen := map[string]bool{}
+	queue := []string{parentID}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		children, err := store.ListChildren(db, current)
+		if err != nil {
+			return nil, err
+		}
+		for _, child := range children {
+			if seen[child.ID] {
+				continue
+			}
+			seen[child.ID] = true
+			queue = append(queue, child.ID)
+		}
+	}
+	return seen, nil
 }
 
 func cmdDefer(args []string) int {

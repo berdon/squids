@@ -61,12 +61,16 @@ func TestRun_RuntimeFailurePath(t *testing.T) {
 func TestRun_HelpAndUnknown(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "tasks.sqlite")
 	code, out, _ := runCLI(t, db, "help")
-	if code != 0 || !strings.Contains(out, "sq - squids task CLI") {
+	if code != 0 || !strings.Contains(out, "Usage:") || !strings.Contains(out, "Global Flags:") {
 		t.Fatalf("help failed code=%d out=%q", code, out)
 	}
 	code, out, _ = runCLI(t, db, "help", "--all")
 	if code != 0 || !strings.Contains(out, "# sq — Complete Command Reference") || !strings.Contains(out, "## Table of Contents") {
 		t.Fatalf("help --all failed code=%d out=%q", code, out)
+	}
+	code, out, _ = runCLI(t, db, "help", "--help")
+	if code != 0 || !strings.Contains(out, "Flags:") || !strings.Contains(out, "Global Flags:") || !strings.Contains(out, "--all") {
+		t.Fatalf("help --help failed code=%d out=%q", code, out)
 	}
 	code, _, _ = runCLI(t, db, "-h")
 	if code != 0 {
@@ -75,6 +79,11 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	code, _, _ = runCLI(t, db, "--help")
 	if code != 0 {
 		t.Fatalf("--help failed code=%d", code)
+	}
+
+	code, out, _ = runCLI(t, db, "help", "create")
+	if code != 0 || !strings.Contains(out, "Usage:") || !strings.Contains(out, "help for create") || !strings.Contains(out, "Global Flags:") {
+		t.Fatalf("help create failed code=%d out=%q", code, out)
 	}
 
 	code, out, _ = runCLI(t, db, "help", "label")
@@ -112,6 +121,10 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	code, out, _ = runCLI(t, db, "help", "backup")
 	if code != 0 || !strings.Contains(out, "sq backup") {
 		t.Fatalf("help backup failed code=%d out=%q", code, out)
+	}
+	code, out, _ = runCLI(t, db, "help", "quickstart")
+	if code != 0 || !strings.Contains(out, "Usage:") || !strings.Contains(out, "Global Flags:") {
+		t.Fatalf("help quickstart failed code=%d out=%q", code, out)
 	}
 	code, out, _ = runCLI(t, db, "gate", "--help")
 	if code != 0 || !strings.Contains(out, "Usage:") {
