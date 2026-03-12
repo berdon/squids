@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -8,11 +9,28 @@ import (
 	"github.com/berdon/squids/internal/store"
 )
 
+func printLabelHelp() {
+	fmt.Println("Manage labels on tasks")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq label add <id> <label> [--json]")
+	fmt.Println("  sq label remove <id> <label> [--json]")
+	fmt.Println("  sq label list <id> [--json]")
+	fmt.Println("  sq label list-all [--json]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  --json   output JSON")
+}
+
 func cmdLabel(args []string) int {
 	if len(args) == 0 {
 		return failUsage("label subcommand required")
 	}
 	sub := args[0]
+	if sub == "--help" || sub == "-h" {
+		printLabelHelp()
+		return 0
+	}
 	db, _, err := openTaskDB()
 	if err != nil {
 		return failRuntime(err.Error())
@@ -21,6 +39,14 @@ func cmdLabel(args []string) int {
 
 	switch sub {
 	case "add":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			fmt.Println("Usage:")
+			fmt.Println("  sq label add <id> <label> [--json]")
+			fmt.Println("")
+			fmt.Println("Flags:")
+			fmt.Println("  --json   output JSON")
+			return 0
+		}
 		if len(args) < 3 {
 			return failUsage("usage: sq label add <id> <label> [--json]")
 		}
@@ -30,6 +56,14 @@ func cmdLabel(args []string) int {
 		}
 		return printJSON(t)
 	case "remove":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			fmt.Println("Usage:")
+			fmt.Println("  sq label remove <id> <label> [--json]")
+			fmt.Println("")
+			fmt.Println("Flags:")
+			fmt.Println("  --json   output JSON")
+			return 0
+		}
 		if len(args) < 3 {
 			return failUsage("usage: sq label remove <id> <label> [--json]")
 		}
@@ -39,6 +73,14 @@ func cmdLabel(args []string) int {
 		}
 		return printJSON(t)
 	case "list":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			fmt.Println("Usage:")
+			fmt.Println("  sq label list <id> [--json]")
+			fmt.Println("")
+			fmt.Println("Flags:")
+			fmt.Println("  --json   output JSON")
+			return 0
+		}
 		if len(args) < 2 {
 			return failUsage("usage: sq label list <id> [--json]")
 		}

@@ -50,6 +50,10 @@ func cmdHelp(args []string) int {
 		return 0
 	}
 	if target != "" {
+		if target == "label" {
+			printLabelHelp()
+			return 0
+		}
 		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
 		_, _ = fmt.Fprintln(os.Stdout, "Usage: sq "+target+" [args]")
 		return 0

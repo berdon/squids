@@ -77,6 +77,22 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 		t.Fatalf("--help failed code=%d", code)
 	}
 
+	code, out, _ = runCLI(t, db, "help", "label")
+	if code != 0 || !strings.Contains(out, "Usage:") || !strings.Contains(out, "Flags:") {
+		t.Fatalf("help label failed code=%d out=%q", code, out)
+	}
+
+	code, out, _ = runCLI(t, db, "label", "--help")
+	if code != 0 || !strings.Contains(out, "sq label add") {
+		t.Fatalf("label --help failed code=%d out=%q", code, out)
+	}
+	for _, args := range [][]string{{"label", "add", "--help"}, {"label", "remove", "--help"}, {"label", "list", "--help"}} {
+		code, out, _ = runCLI(t, db, args...)
+		if code != 0 || !strings.Contains(out, "Usage:") || !strings.Contains(out, "Flags:") {
+			t.Fatalf("%v help failed code=%d out=%q", args, code, out)
+		}
+	}
+
 	code, _, err := runCLI(t, db, "nope")
 	if code != 2 || !strings.Contains(err, "unknown command") {
 		t.Fatalf("unknown command failed code=%d err=%q", code, err)
