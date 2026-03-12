@@ -61,6 +61,7 @@ func usage() {
 	fmt.Println("  blocked Show blocked tasks")
 	fmt.Println("  defer   Defer one or more tasks")
 	fmt.Println("  undefer Restore deferred tasks to open")
+	fmt.Println("  set-state Set operational state label (compat surface)")
 	fmt.Println("  rename  Rename an issue ID")
 	fmt.Println("  rename-prefix Rename issue ID prefix")
 	fmt.Println("  duplicate Mark issue as duplicate of canonical issue")

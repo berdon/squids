@@ -237,6 +237,12 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("audit", "record", "--wat")
 	mustFail("audit", "wat")
 
+	mustFail("set-state")
+	mustFail("set-state", id)
+	mustFail("set-state", id, "mode=normal")
+	mustFail("set-state", id, "mode=normal", "--reason", "test", "--json")
+	mustFail("set-state", id, "mode=normal", "--wat")
+
 	mustOK("swarm")
 	mustOK("swarm", "list")
 	mustOK("swarm", "list", "--json")

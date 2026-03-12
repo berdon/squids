@@ -385,6 +385,28 @@ func cmdUndefer(args []string) int {
 	return printJSON(out)
 }
 
+func cmdSetState(args []string) int {
+	if len(args) < 2 {
+		return failUsage("usage: sq set-state <issue-id> <dimension>=<value> [--reason TEXT] [--json]")
+	}
+	for i := 2; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--reason", "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		case "--json", "--help", "-h", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("set-state compatibility surface only; state events not yet supported on sq sqlite backend")
+}
+
 func cmdRename(args []string) int {
 	if len(args) < 2 {
 		return failUsage("usage: sq rename <old-id> <new-id> [--json]")

@@ -57,6 +57,8 @@ func Run(args []string) int {
 		return cmdDefer(args[1:])
 	case "undefer":
 		return cmdUndefer(args[1:])
+	case "set-state":
+		return cmdSetState(args[1:])
 	case "rename":
 		return cmdRename(args[1:])
 	case "rename-prefix":
