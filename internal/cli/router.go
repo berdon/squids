@@ -130,6 +130,7 @@ func Run(args []string) int {
 	case "edit":
 		return cmdEdit(args[1:])
 	default:
+
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()
 		return 2

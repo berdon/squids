@@ -97,6 +97,7 @@ func usage() {
 	fmt.Println("  linear   Linear integration commands (compat surface)")
 	fmt.Println("  dolt     Dolt integration commands (compat surface)")
 	fmt.Println("  edit     Edit issue in configured editor (compat surface)")
+	fmt.Println("  duplicate Mark issue as duplicate of canonical issue (compat surface)")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {

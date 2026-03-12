@@ -522,6 +522,13 @@ func cmdRenamePrefix(args []string) int {
 }
 
 func cmdDuplicate(args []string) int {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			_, _ = fmt.Fprintln(os.Stdout, "Mark issue as duplicate of canonical issue.")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage: sq duplicate <id> --of <canonical-id> [--json]")
+			return 0
+		}
+	}
 	if len(args) == 0 {
 		return failUsage("usage: sq duplicate <id> --of <canonical-id> [--json]")
 	}
