@@ -262,10 +262,13 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, out, _ = runCLI(t, db, "gate", "show", gateID); code != 0 || !strings.Contains(out, "Gate "+gateID) {
 		t.Fatalf("gate show human failed code=%d out=%q", code, out)
 	}
-	if code, _, _ = runCLI(t, db, "gate", "check", "--json"); code != 0 {
-		t.Fatalf("gate check failed")
+	if code, out, _ = runCLI(t, db, "gate", "check", "--json"); code != 0 || !strings.Contains(out, "open_gates") {
+		t.Fatalf("gate check json failed code=%d out=%q", code, out)
 	}
-	if code, out, _ = runCLI(t, db, "gate", "resolve", gateID); code != 0 || !strings.Contains(out, "Resolved gate") {
+	if code, out, _ = runCLI(t, db, "gate", "check"); code != 0 || !strings.Contains(out, "Gate check complete") {
+		t.Fatalf("gate check human failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "gate", "resolve", gateID, "--reason", "manual"); code != 0 || !strings.Contains(out, "Resolved gate") {
 		t.Fatalf("gate resolve human failed code=%d out=%q", code, out)
 	}
 	if code, out, _ = runCLI(t, db, "gate", "list", "--all", "--json"); code != 0 || !strings.Contains(out, gateID) {
@@ -310,6 +313,7 @@ func TestRun_ErrorFlagsAndValidation(t *testing.T) {
 		{"types", "--bad"},
 		{"gate", "wat"},
 		{"gate", "show"},
+		{"gate", "resolve"},
 	}
 	for _, c := range cases {
 		code, _, _ := runCLI(t, db, c...)
@@ -321,6 +325,22 @@ func TestRun_ErrorFlagsAndValidation(t *testing.T) {
 	code, _, _ := runCLI(t, db, "query", "madeupfield=1", "--json")
 	if code == 0 {
 		t.Fatalf("expected bad query to fail")
+	}
+}
+
+func TestRun_GateShowRejectsNonGate(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
+		t.Fatalf("init failed")
+	}
+	code, out, _ := runCLI(t, db, "create", "not a gate", "--type", "task", "--json")
+	if code != 0 {
+		t.Fatalf("create failed: %d", code)
+	}
+	id := firstID(t, out)
+	code, _, errOut := runCLI(t, db, "gate", "show", id)
+	if code == 0 || !strings.Contains(errOut, "not a gate") {
+		t.Fatalf("expected non-gate rejection, code=%d err=%q", code, errOut)
 	}
 }
 
