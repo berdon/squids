@@ -1448,12 +1448,15 @@ func cmdSwarm(args []string) int {
 	}
 	sub := args[0]
 	jsonOut := false
+	helpOut := false
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--json":
 			jsonOut = true
-		case "--help", "-h", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--help", "-h":
+			helpOut = true
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (mostly no-op)
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 < len(args) {
@@ -1483,6 +1486,11 @@ func cmdSwarm(args []string) int {
 		_, _ = fmt.Fprintln(os.Stdout, "Swarm structure is valid.")
 		return 0
 	case "create":
+		if helpOut {
+			_, _ = fmt.Fprintln(os.Stdout, "Help for command: swarm create")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage: sq swarm create [args]")
+			return 0
+		}
 		return failRuntime("swarm create not yet supported on sq sqlite backend")
 	default:
 		return failUsage("unknown swarm subcommand: " + sub)
