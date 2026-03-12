@@ -1,4 +1,4 @@
-package swarm_create_test
+package swarmcreate_test
 
 import (
 	"os"

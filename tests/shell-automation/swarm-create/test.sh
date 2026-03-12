@@ -52,19 +52,6 @@ assert_not_contains() {
   fi
 }
 
-run_capture() {
-  local name="$1"
-  shift
-  local out_file="$TMP_DIR/${name}.out"
-  local err_file="$TMP_DIR/${name}.err"
-  set +e
-  "$@" >"$out_file" 2>"$err_file"
-  RUN_CODE=$?
-  set -e
-  RUN_OUT="$(<"$out_file")"
-  RUN_ERR="$(<"$err_file")"
-}
-
 json_eval() {
   local payload="$1"
   local expr="$2"
@@ -84,20 +71,35 @@ else:
 PY
 }
 
-export SQ_DB_PATH="$TMP_DIR/tasks.sqlite"
+run_capture() {
+  local name="$1"
+  shift
+  local out_file="$TMP_DIR/${name}.out"
+  local err_file="$TMP_DIR/${name}.err"
+  set +e
+  "$@" >"$out_file" 2>"$err_file"
+  RUN_CODE=$?
+  set -e
+  RUN_OUT="$(<"$out_file")"
+  RUN_ERR="$(<"$err_file")"
+}
 
+WORKSPACE="$TMP_DIR/workspace"
+mkdir -p "$WORKSPACE"
+cd "$WORKSPACE"
+export SQ_DB_PATH="$WORKSPACE/tasks.sqlite"
+
+echo "[swarm-create] workspace=$WORKSPACE"
 echo "[swarm-create] binary=$SQ_BIN"
-echo "[swarm-create] db=$SQ_DB_PATH"
 
 run_capture init "$SQ_BIN" init --json
 assert_eq "$RUN_CODE" "0" "sq init"
 assert_eq "$(json_eval "$RUN_OUT" 'obj["command"]')" "init" "init command"
 assert_eq "$(json_eval "$RUN_OUT" 'obj["ok"]')" "true" "init ok"
 
-run_capture count_before "$SQ_BIN" count --json
-assert_eq "$RUN_CODE" "0" "count before swarm create"
-COUNT_BEFORE="$RUN_OUT"
-assert_eq "$(json_eval "$COUNT_BEFORE" 'obj["count"]')" "0" "count before swarm create payload"
+COUNT_BEFORE="$($SQ_BIN count --json)"
+STATUS_BEFORE="$($SQ_BIN status --json)"
+assert_eq "$(json_eval "$COUNT_BEFORE" 'obj["count"]')" "0" "count before swarm create"
 
 run_capture help_swarm "$SQ_BIN" help swarm
 assert_eq "$RUN_CODE" "0" "sq help swarm"
@@ -109,33 +111,56 @@ assert_eq "$RUN_CODE" "0" "sq swarm"
 assert_eq "$RUN_OUT" "sq swarm [create|list|status|validate]" "sq swarm discovery surface"
 assert_empty "$RUN_ERR" "sq swarm stderr"
 
-run_capture create_default "$SQ_BIN" swarm create
-assert_eq "$RUN_CODE" "1" "sq swarm create runtime status"
-assert_empty "$RUN_OUT" "sq swarm create stdout"
-assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "sq swarm create runtime error"
+run_capture help_cmd "$SQ_BIN" help "swarm create"
+assert_eq "$RUN_CODE" "0" "sq help swarm create"
+assert_contains "$RUN_OUT" "Help for command: swarm create" "help command heading"
+assert_contains "$RUN_OUT" "Usage: sq swarm create [args]" "help command usage"
+HELP_CMD_OUT="$RUN_OUT"
 
-run_capture create_json "$SQ_BIN" swarm create --json
-assert_eq "$RUN_CODE" "1" "sq swarm create --json runtime status"
+run_capture default "$SQ_BIN" swarm create
+assert_eq "$RUN_CODE" "1" "sq swarm create current backend behavior"
+assert_empty "$RUN_OUT" "sq swarm create stdout"
+assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "default unsupported error"
+
+run_capture json_mode "$SQ_BIN" swarm create --json
+assert_eq "$RUN_CODE" "1" "sq swarm create --json current backend behavior"
 assert_empty "$RUN_OUT" "sq swarm create --json stdout"
-assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "sq swarm create --json runtime error"
+assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "json unsupported error"
 assert_not_contains "$RUN_ERR" "{" "sq swarm create --json should not claim json output"
 
-run_capture create_help_flag "$SQ_BIN" swarm create --help
-assert_eq "$RUN_CODE" "1" "sq swarm create --help runtime status"
-assert_empty "$RUN_OUT" "sq swarm create --help stdout"
-assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "sq swarm create --help runtime error"
+run_capture compat_actor "$SQ_BIN" swarm create --actor tester
+assert_eq "$RUN_CODE" "1" "sq swarm create --actor current backend behavior"
+assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "actor unsupported error"
 
-run_capture create_bad_flag "$SQ_BIN" swarm create --wat
+run_capture compat_db "$SQ_BIN" swarm create --db "$SQ_DB_PATH"
+assert_eq "$RUN_CODE" "1" "sq swarm create --db current backend behavior"
+assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "db unsupported error"
+
+run_capture compat_dolt "$SQ_BIN" swarm create --dolt-auto-commit off
+assert_eq "$RUN_CODE" "1" "sq swarm create --dolt-auto-commit current backend behavior"
+assert_contains "$RUN_ERR" "swarm create not yet supported on sq sqlite backend" "dolt unsupported error"
+
+run_capture bad_flag "$SQ_BIN" swarm create --wat
 assert_eq "$RUN_CODE" "2" "sq swarm create unknown flag"
 assert_empty "$RUN_OUT" "sq swarm create unknown flag stdout"
-assert_contains "$RUN_ERR" "unknown flag: --wat" "sq swarm create unknown flag error"
+assert_contains "$RUN_ERR" "unknown flag: --wat" "unknown flag error"
 
-run_capture count_after "$SQ_BIN" count --json
-assert_eq "$RUN_CODE" "0" "count after swarm create checks"
-assert_eq "$RUN_OUT" "$COUNT_BEFORE" "swarm create failures should not mutate sq state"
+assert_eq "$($SQ_BIN count --json)" "$COUNT_BEFORE" "swarm create should not mutate count"
+assert_eq "$($SQ_BIN status --json)" "$STATUS_BEFORE" "swarm create should not mutate status"
+
+run_capture help_flag "$SQ_BIN" swarm create --help
+assert_eq "$RUN_CODE" "0" "sq swarm create --help should succeed"
+assert_contains "$RUN_OUT" "Help for command: swarm create" "help flag heading"
+assert_contains "$RUN_OUT" "Usage: sq swarm create [args]" "help flag usage"
+assert_eq "$RUN_OUT" "$HELP_CMD_OUT" "sq swarm create --help should align with sq help swarm create"
+assert_eq "$RUN_ERR" "" "sq swarm create --help should not write stderr"
 
 run_capture list_after "$SQ_BIN" list --json
 assert_eq "$RUN_CODE" "0" "list after swarm create checks"
 assert_eq "$(json_eval "$RUN_OUT" 'len(obj)')" "0" "list after swarm create checks should remain empty"
+
+run_capture json_after_help "$SQ_BIN" status --json
+assert_eq "$RUN_CODE" "0" "status after help parity check"
+assert_eq "$(json_eval "$RUN_OUT" 'obj["summary"]["total_issues"]')" "0" "swarm create help should not create issues"
 
 echo "[swarm-create] PASS"
