@@ -297,8 +297,11 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, _, _ = runCLI(t, db, "search", "Task", "--json", "-n", "3"); code != 0 {
 		t.Fatalf("search failed")
 	}
-	if code, _, _ = runCLI(t, db, "count", "--status", "open", "--json"); code != 0 {
-		t.Fatalf("count failed")
+	if code, out, _ = runCLI(t, db, "count"); code != 0 || strings.Contains(out, `"count"`) {
+		t.Fatalf("count human failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "count", "--status", "open", "--json"); code != 0 || !strings.Contains(out, `"count"`) {
+		t.Fatalf("count failed code=%d out=%q", code, out)
 	}
 	if code, out, _ = runCLI(t, db, "gate", "list"); code != 0 || !strings.Contains(out, "Found") {
 		t.Fatalf("gate list human failed code=%d out=%q", code, out)
