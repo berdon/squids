@@ -393,6 +393,79 @@ func TestCmdImportBeads_SchemaValidationAcceptsIssuesTable(t *testing.T) {
 	}
 }
 
+func TestHelpers_ToIntAndIssueAuxReaders(t *testing.T) {
+	tmp := t.TempDir()
+	source := filepath.Join(tmp, "helpers.sqlite")
+	db, err := sql.Open("sqlite3", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = db.Exec(`CREATE TABLE issues (id TEXT,title TEXT)`)
+	_, _ = db.Exec(`INSERT INTO issues(id,title) VALUES('bd-1','one')`)
+	_, _ = db.Exec(`CREATE TABLE issue_labels (issue_id TEXT,label TEXT)`)
+	_, _ = db.Exec(`CREATE TABLE issue_deps (issue_id TEXT,depends_on_id TEXT,dep_type TEXT)`)
+	_, _ = db.Exec(`INSERT INTO issue_labels(issue_id,label) VALUES('bd-1','a')`)
+	_, _ = db.Exec(`INSERT INTO issue_labels(issue_id,label) VALUES('bd-1','')`)
+	_, _ = db.Exec(`INSERT INTO issue_deps(issue_id,depends_on_id,dep_type) VALUES('bd-1','bd-2','blocks')`)
+	_ = db.Close()
+
+	src, err := openSQLite(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+
+	labels, err := loadIssueLabelsJSON(src, "bd-1")
+	if err != nil || !strings.Contains(labels, "a") {
+		t.Fatalf("expected labels json with 'a', got=%q err=%v", labels, err)
+	}
+	deps, err := loadIssueDepsJSON(src, "bd-1")
+	if err != nil || !strings.Contains(deps, "bd-2") {
+		t.Fatalf("expected deps json with 'bd-2', got=%q err=%v", deps, err)
+	}
+
+	if got := toInt("7", 2); got != 7 {
+		t.Fatalf("toInt parse expected 7 got %d", got)
+	}
+	if got := toInt("not-int", 2); got != 2 {
+		t.Fatalf("toInt fallback expected 2 got %d", got)
+	}
+}
+
+func TestImportFromSource_IssuesWithoutAuxTables(t *testing.T) {
+	tmp := t.TempDir()
+	source := filepath.Join(tmp, "issues-no-aux.sqlite")
+	target := filepath.Join(tmp, "target.sqlite")
+
+	db, err := sql.Open("sqlite3", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = db.Exec(`CREATE TABLE issues (id TEXT,title TEXT,description TEXT,status TEXT,priority INTEGER,issue_type TEXT,assignee TEXT,owner TEXT,metadata_json TEXT,close_reason TEXT,created_at TEXT,updated_at TEXT,closed_at TEXT)`)
+	_, _ = db.Exec(`INSERT INTO issues(id,title,description,status,priority,issue_type,assignee,owner,metadata_json,close_reason,created_at,updated_at,closed_at) VALUES('bd-z','Z','desc','open',2,'task','','','{}','','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','')`)
+	_ = db.Close()
+
+	src, err := openSQLite(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	dst, err := store.Open(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dst.Close()
+	_ = store.Init(dst)
+
+	report, err := importFromSource(src, dst, source, importOptions{})
+	if err != nil {
+		t.Fatalf("issues w/o aux import failed: %v", err)
+	}
+	if report.Tasks["created"] != 1 {
+		t.Fatalf("expected one created task, got %+v", report.Tasks)
+	}
+}
+
 func TestCmdImportBeads_SuccessPlainTextAndMappingError(t *testing.T) {
 	tmp := t.TempDir()
 	target := filepath.Join(tmp, "target.sqlite")
