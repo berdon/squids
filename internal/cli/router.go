@@ -99,6 +99,8 @@ func Run(args []string) int {
 		return cmdQuickstart(args[1:])
 	case "mail":
 		return cmdMail(args[1:])
+	case "mol":
+		return cmdMol(args[1:])
 	case "setup":
 		return cmdSetup(args[1:])
 	case "history":

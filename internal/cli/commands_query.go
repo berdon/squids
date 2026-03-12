@@ -818,6 +818,25 @@ func cmdQuickstart(args []string) int {
 	return 0
 }
 
+func cmdMol(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("mol compatibility surface only; sq does not implement molecule workflows")
+}
+
 func cmdMail(args []string) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
