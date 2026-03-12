@@ -64,6 +64,10 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "sq - squids task CLI") {
 		t.Fatalf("help failed code=%d out=%q", code, out)
 	}
+	code, out, _ = runCLI(t, db, "help", "--all")
+	if code != 0 || !strings.Contains(out, "# sq — Complete Command Reference") || !strings.Contains(out, "## Table of Contents") {
+		t.Fatalf("help --all failed code=%d out=%q", code, out)
+	}
 	code, _, _ = runCLI(t, db, "-h")
 	if code != 0 {
 		t.Fatalf("-h failed code=%d", code)

@@ -46,7 +46,7 @@ func cmdHelp(args []string) int {
 	}
 
 	if all {
-		usage()
+		printHelpAll()
 		return 0
 	}
 	if target != "" {
@@ -56,6 +56,33 @@ func cmdHelp(args []string) int {
 	}
 	usage()
 	return 0
+}
+
+func printHelpAll() {
+	_, _ = fmt.Fprintln(os.Stdout, "# sq — Complete Command Reference")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Generated from `sq help --all`")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "## Table of Contents")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "### Core Commands")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq init` — Initialize task storage")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq create` — Create a task")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq list` — List tasks")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq show` — Show a task")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq update` — Update a task")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq close` / `sq reopen` — Transition task state")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq ready` — Show unblocked work")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "### Compatibility Surfaces")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq history` — Not supported on sqlite backend")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq swarm` — Compatibility command group")
+	_, _ = fmt.Fprintln(os.Stdout, "- `sq hooks` — Compatibility command group")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "### Usage")
+	_, _ = fmt.Fprintln(os.Stdout, "`sq <command> [args]`")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Run `sq help <command>` for command-specific usage.")
 }
 
 func cmdQuery(args []string) int {
