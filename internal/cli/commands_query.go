@@ -16,6 +16,10 @@ var Version = "dev"
 
 func cmdHelp(args []string) int {
 	all := false
+	if len(args) >= 2 && args[0] == "gate" && args[1] == "list" {
+		printGateListHelp()
+		return 0
+	}
 	target := ""
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -243,6 +247,17 @@ func printGateHelp() {
 	_, _ = fmt.Fprintln(os.Stdout, "  --all    include closed gates (list)")
 }
 
+func printGateListHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "List gate issues.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq gate list [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "      --all    include closed gates")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json   output JSON")
+}
+
 func cmdGate(args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		printGateHelp()
@@ -265,8 +280,19 @@ func cmdGate(args []string) int {
 	case "list":
 		includeAll := false
 		for _, a := range args[1:] {
-			if a == "--all" {
+			switch a {
+			case "--all":
 				includeAll = true
+			case "--json":
+				// handled globally
+			case "--help", "-h":
+				printGateListHelp()
+				return 0
+			default:
+				if strings.HasPrefix(a, "-") {
+					return failUsage("unknown flag: " + a)
+				}
+				return failUsage("gate list does not accept positional arguments")
 			}
 		}
 		all, err := store.ListTasks(db)
