@@ -474,6 +474,43 @@ func cmdComments(args []string) int {
 	return 0
 }
 
+func printTodoListHelp() {
+	fmt.Println("List open TODO items.")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq todo list [flags]")
+	fmt.Println("  sq todo [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help   help for list")
+	fmt.Println("      --json   Output in JSON format")
+}
+
+func printTodoAddHelp() {
+	fmt.Println("Add a TODO item.")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq todo add <title> [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help              help for add")
+	fmt.Println("      --description TEXT  Task description")
+	fmt.Println("      --json              Output in JSON format")
+	fmt.Println("      --priority N        Priority (0-4, 0=highest)")
+}
+
+func printTodoDoneHelp() {
+	fmt.Println("Mark a TODO item as done.")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq todo done <id> [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help        help for done")
+	fmt.Println("      --json        Output in JSON format")
+	fmt.Println("      --reason TEXT Close reason")
+}
+
 func cmdTodo(args []string) int {
 	sub := "list"
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -489,23 +526,64 @@ func cmdTodo(args []string) int {
 
 	switch sub {
 	case "list":
+		jsonOut := false
+		for i := 0; i < len(args); i++ {
+			switch args[i] {
+			case "--help", "-h":
+				printTodoListHelp()
+				return 0
+			case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+				if args[i] == "--json" {
+					jsonOut = true
+				}
+			case "--actor", "--db", "--dolt-auto-commit":
+				if i+1 >= len(args) {
+					return failUsage("missing value for " + args[i])
+				}
+				i++
+			default:
+				if strings.HasPrefix(args[i], "-") {
+					return failUsage("unknown flag: " + args[i])
+				}
+				return failUsage("usage: sq todo list [flags]")
+			}
+		}
 		all, err := store.ListTasks(db)
 		if err != nil {
 			return failRuntime(err.Error())
 		}
 		tasks := make([]store.Task, 0)
 		for _, t := range all {
-			if t.IssueType == "task" && t.Status == "open" {
+			if t.IssueType == "task" {
 				tasks = append(tasks, t)
 			}
 		}
-		if len(tasks) == 0 {
-			return printJSON(nil)
+		if jsonOut {
+			if len(tasks) == 0 {
+				return printJSON(nil)
+			}
+			return printJSON(tasks)
 		}
-		return printJSON(tasks)
+		if len(tasks) == 0 {
+			_, _ = fmt.Fprintln(os.Stdout, "No open TODO items.")
+			return 0
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Open TODOs (%d):\n", len(tasks))
+		for _, t := range tasks {
+			_, _ = fmt.Fprintf(os.Stdout, "- %s [P%d] %s\n", t.ID, t.Priority, t.Title)
+		}
+		return 0
 	case "add":
+		jsonOut := false
+		if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
+			printTodoAddHelp()
+			return 0
+		}
 		if len(args) == 0 {
 			return failUsage("usage: sq todo add <title> [--priority N] [--description TEXT] [--json]")
+		}
+		if strings.HasPrefix(args[0], "-") {
+			return failUsage("unknown flag: " + args[0])
 		}
 		in := store.CreateInput{Title: args[0], IssueType: "task", Priority: 2}
 		creator := strings.TrimSpace(os.Getenv("BD_ACTOR"))
@@ -516,58 +594,99 @@ func cmdTodo(args []string) int {
 		for i := 1; i < len(args); i++ {
 			switch args[i] {
 			case "--priority":
-				if i+1 < len(args) {
-					p, err := strconv.Atoi(args[i+1])
-					if err != nil {
-						return failUsage("invalid --priority")
-					}
-					in.Priority = p
-					i++
+				if i+1 >= len(args) {
+					return failUsage("missing value for --priority")
 				}
+				p, err := strconv.Atoi(args[i+1])
+				if err != nil {
+					return failUsage("invalid --priority")
+				}
+				in.Priority = p
+				i++
 			case "--description":
-				if i+1 < len(args) {
-					in.Description = args[i+1]
-					i++
+				if i+1 >= len(args) {
+					return failUsage("missing value for --description")
 				}
+				in.Description = args[i+1]
+				i++
 			case "--json":
-				// accepted, no-op
+				jsonOut = true
+			case "--help", "-h":
+				printTodoAddHelp()
+				return 0
+			case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+				// accepted compatibility flags (no-op)
+			case "--actor", "--db", "--dolt-auto-commit":
+				if i+1 >= len(args) {
+					return failUsage("missing value for " + args[i])
+				}
+				i++
 			default:
 				if strings.HasPrefix(args[i], "-") {
 					return failUsage("unknown flag: " + args[i])
 				}
+				return failUsage("usage: sq todo add <title> [--priority N] [--description TEXT] [--json]")
 			}
 		}
 		t, err := store.CreateTask(db, in)
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(t)
+		if jsonOut {
+			return printJSON(t)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Added todo %s: %s\n", t.ID, t.Title)
+		return 0
 	case "done":
+		jsonOut := false
+		if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
+			printTodoDoneHelp()
+			return 0
+		}
 		if len(args) == 0 {
 			return failUsage("usage: sq todo done <id> [--reason TEXT] [--json]")
+		}
+		if strings.HasPrefix(args[0], "-") {
+			return failUsage("unknown flag: " + args[0])
 		}
 		id := args[0]
 		reason := "Completed"
 		for i := 1; i < len(args); i++ {
 			switch args[i] {
 			case "--reason":
-				if i+1 < len(args) {
-					reason = args[i+1]
-					i++
+				if i+1 >= len(args) {
+					return failUsage("missing value for --reason")
 				}
+				reason = args[i+1]
+				i++
 			case "--json":
-				// accepted, no-op
+				jsonOut = true
+			case "--help", "-h":
+				printTodoDoneHelp()
+				return 0
+			case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+				// accepted compatibility flags (no-op)
+			case "--actor", "--db", "--dolt-auto-commit":
+				if i+1 >= len(args) {
+					return failUsage("missing value for " + args[i])
+				}
+				i++
 			default:
 				if strings.HasPrefix(args[i], "-") {
 					return failUsage("unknown flag: " + args[i])
 				}
+				return failUsage("usage: sq todo done <id> [--reason TEXT] [--json]")
 			}
 		}
 		t, err := store.CloseTask(db, id, reason)
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(t)
+		if jsonOut {
+			return printJSON(t)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Completed todo %s\n", t.ID)
+		return 0
 	default:
 		return failUsage("unknown todo subcommand: " + sub)
 	}

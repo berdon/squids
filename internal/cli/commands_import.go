@@ -94,7 +94,13 @@ func cmdMemories(args []string) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
-		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Persistent memory store compatibility surface.")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq memories [flags]")
+			return 0
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 >= len(args) {

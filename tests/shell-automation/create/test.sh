@@ -154,6 +154,7 @@ run_capture compat_dolt "$SQ_BIN" create "compat task auto commit" --dolt-auto-c
 assert_eq "$RUN_CODE" "0" "create with --dolt-auto-commit compat flag"
 
 COUNT_BEFORE_HUMAN="$($SQ_BIN count --json)"
+COUNT_BEFORE_HUMAN_VALUE="$(json_eval "$COUNT_BEFORE_HUMAN" 'obj["count"]')"
 run_capture human "$SQ_BIN" create "human mode task"
 assert_eq "$RUN_CODE" "0" "human create"
 assert_not_contains "$RUN_OUT" '"id"' "human create should not be raw JSON"
@@ -162,7 +163,8 @@ HUMAN_ID="$(printf '%s' "$RUN_OUT" | grep -o 'bd-[a-z0-9]\+' | head -1)"
 assert_id_like "$HUMAN_ID" "human create id"
 run_capture human_show "$SQ_BIN" show "$HUMAN_ID" --json
 assert_eq "$RUN_CODE" "0" "show human-created task"
-assert_eq "$($SQ_BIN count --json)" "$COUNT_BEFORE_HUMAN" "human create should change count by exactly one"
+COUNT_AFTER_HUMAN="$($SQ_BIN count --json)"
+assert_eq "$(json_eval "$COUNT_AFTER_HUMAN" 'obj["count"]')" "$((COUNT_BEFORE_HUMAN_VALUE + 1))" "human create should change count by exactly one"
 
 run_capture missing_title "$SQ_BIN" create
 assert_eq "$RUN_CODE" "2" "missing title"

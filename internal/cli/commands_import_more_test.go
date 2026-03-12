@@ -12,12 +12,12 @@ import (
 )
 
 func TestCmdMemoriesAndGitLabCompatibilityBranches(t *testing.T) {
-	code, _, errOut := captureOutput(t, func() int { return cmdMemories([]string{"--help"}) })
-	if code == 0 || !strings.Contains(strings.ToLower(errOut), "compatibility") {
-		t.Fatalf("expected memories compat runtime failure, code=%d err=%q", code, errOut)
+	code, out, errOut := captureOutput(t, func() int { return cmdMemories([]string{"--help"}) })
+	if code != 0 || errOut != "" || !strings.Contains(strings.ToLower(out), "memories") || !strings.Contains(out, "Usage:") {
+		t.Fatalf("expected memories help success, code=%d out=%q err=%q", code, out, errOut)
 	}
 
-	code, out, _ := captureOutput(t, func() int { return cmdGitLab(nil) })
+	code, out, _ = captureOutput(t, func() int { return cmdGitLab(nil) })
 	if code != 0 || !strings.Contains(out, "sq gitlab") {
 		t.Fatalf("expected gitlab usage, code=%d out=%q", code, out)
 	}

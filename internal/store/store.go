@@ -24,7 +24,7 @@ type Task struct {
 	Title       string            `json:"title"`
 	Description string            `json:"description,omitempty"`
 	Status      string            `json:"status"`
-	Priority    int               `json:"priority,omitempty"`
+	Priority    int               `json:"priority"`
 	IssueType   string            `json:"issue_type,omitempty"`
 	Assignee    string            `json:"assignee,omitempty"`
 	Owner       string            `json:"owner,omitempty"`

@@ -483,36 +483,45 @@ func cmdCreate(args []string) int {
 	if len(args) == 0 {
 		return failUsage("title is required")
 	}
+	if strings.HasPrefix(args[0], "-") {
+		return failUsage("title is required")
+	}
 	creator := strings.TrimSpace(os.Getenv("BD_ACTOR"))
 	if creator == "" {
 		creator = strings.TrimSpace(os.Getenv("USER"))
 	}
 	in := store.CreateInput{Title: args[0], IssueType: "task", Creator: creator}
 	deps := make([][2]string, 0)
+	jsonOut := false
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--type":
-			if i+1 < len(args) {
-				in.IssueType = args[i+1]
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for --type")
 			}
+			in.IssueType = args[i+1]
+			i++
 		case "--priority":
-			if i+1 < len(args) {
-				p, err := strconv.Atoi(args[i+1])
-				if err != nil {
-					return failUsage("invalid --priority")
-				}
-				in.Priority = p
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for --priority")
 			}
+			p, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				return failUsage("invalid --priority")
+			}
+			in.Priority = p
+			i++
 		case "--description":
-			if i+1 < len(args) {
-				in.Description = args[i+1]
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for --description")
 			}
+			in.Description = args[i+1]
+			i++
 		case "--deps":
-			if i+1 < len(args) {
-				spec := args[i+1]
+			if i+1 >= len(args) {
+				return failUsage("invalid --deps value")
+			}
+			for _, spec := range splitCSV(args[i+1]) {
 				depType := "blocks"
 				depID := spec
 				if strings.Contains(spec, ":") {
@@ -520,14 +529,21 @@ func cmdCreate(args []string) int {
 					depType = strings.TrimSpace(parts[0])
 					depID = strings.TrimSpace(parts[1])
 				}
-				if depID == "" {
+				if depID == "" || depType == "" {
 					return failUsage("invalid --deps value")
 				}
 				deps = append(deps, [2]string{depType, depID})
-				i++
 			}
+			i++
 		case "--json":
-			// accepted, no-op
+			jsonOut = true
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + args[i])
+			}
+			i++
 		default:
 			if strings.HasPrefix(args[i], "-") {
 				return failUsage("unknown flag: " + args[i])
@@ -552,10 +568,34 @@ func cmdCreate(args []string) int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(t)
+	if jsonOut {
+		return printJSON(t)
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "Created task %s: %s\n", t.ID, t.Title)
+	return 0
+}
+
+func printQHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Quick-capture a task and print its id.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq q <title> [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help                 help for q")
+	_, _ = fmt.Fprintln(os.Stdout, "      --description string   Task description")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json                 Output in JSON format")
+	_, _ = fmt.Fprintln(os.Stdout, "      --priority int         Priority (0-4, 0=highest)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --type string          Issue type")
 }
 
 func cmdQ(args []string) int {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			printQHelp()
+			return 0
+		}
+	}
 	if len(args) == 0 {
 		return failUsage("title is required")
 	}
@@ -616,20 +656,38 @@ func cmdShow(args []string) int {
 	}
 	id := ""
 	jsonOut := false
-	for _, a := range args {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
 		switch a {
 		case "--help", "-h":
 			_, _ = fmt.Fprintln(os.Stdout, "Show details for a single issue.")
-			_, _ = fmt.Fprintln(os.Stdout, "Usage: sq show <id> [--json]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq show <id> [flags]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for show")
+			_, _ = fmt.Fprintln(os.Stdout, "      --json   Output in JSON format")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			printGlobalFlags()
 			return 0
 		case "--json":
 			jsonOut = true
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
 			}
 			if id == "" {
 				id = a
+			} else {
+				return failUsage("unexpected positional argument: " + a)
 			}
 		}
 	}

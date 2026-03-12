@@ -293,7 +293,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("quickstart", "--wat")
 
 	mustFail("mail")
-	mustFail("mail", "--help")
+	mustOK("mail", "--help")
 	mustFail("mail", "--json")
 	mustFail("mail", "--wat")
 
@@ -357,7 +357,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("gitlab", "--wat")
 
 	mustFail("memories")
-	mustFail("memories", "--help")
+	mustOK("memories", "--help")
 	mustFail("memories", "--json")
 	mustFail("memories", "--wat")
 

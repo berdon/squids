@@ -16,14 +16,29 @@ var Version = "dev"
 
 func cmdHelp(args []string) int {
 	all := false
-	if len(args) >= 2 && args[0] == "gate" {
-		switch args[1] {
-		case "list":
-			printGateListHelp()
-			return 0
-		case "show":
-			printGateShowHelp()
-			return 0
+	if len(args) >= 2 {
+		switch args[0] {
+		case "gate":
+			switch args[1] {
+			case "list":
+				printGateListHelp()
+				return 0
+			case "show":
+				printGateShowHelp()
+				return 0
+			}
+		case "todo":
+			switch args[1] {
+			case "add":
+				printTodoAddHelp()
+				return 0
+			case "done":
+				printTodoDoneHelp()
+				return 0
+			case "list":
+				printTodoListHelp()
+				return 0
+			}
 		}
 	}
 	target := ""
@@ -78,6 +93,8 @@ func cmdHelp(args []string) int {
 		case "comments":
 			printCommentsHelp()
 			return 0
+		case "show":
+			return cmdShow([]string{"--help"})
 		case "label":
 			printLabelHelp()
 			return 0
@@ -96,12 +113,17 @@ func cmdHelp(args []string) int {
 		case "blocked":
 			printBlockedHelp()
 			return 0
+		case "init":
+			printInitHelp()
+			return 0
 		case "import-beads":
 			printImportBeadsHelp()
 			return 0
 		case "quickstart":
 			printQuickstartHelp()
 			return 0
+		case "status":
+			return cmdStatus([]string{"--help"})
 		case "types":
 			printTypesHelp()
 			return 0
@@ -782,6 +804,7 @@ func cmdCount(args []string) int {
 
 func cmdStatus(args []string) int {
 	jsonOut := false
+	assignedOnly := false
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -813,8 +836,10 @@ func cmdStatus(args []string) int {
 			_, _ = fmt.Fprintln(os.Stdout, "      --sandbox                   Sandbox mode: disables auto-sync")
 			_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
 			return 0
-		case "--all", "--assigned", "--no-activity", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--all", "--no-activity", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
+		case "--assigned":
+			assignedOnly = true
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 < len(args) {
 				i++
@@ -836,6 +861,22 @@ func cmdStatus(args []string) int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
+	if assignedOnly {
+		actor := strings.TrimSpace(os.Getenv("SQ_ACTOR"))
+		if actor == "" {
+			actor = strings.TrimSpace(os.Getenv("BD_ACTOR"))
+		}
+		if actor == "" {
+			actor = strings.TrimSpace(os.Getenv("USER"))
+		}
+		filtered := make([]store.Task, 0, len(tasks))
+		for _, t := range tasks {
+			if t.Assignee == actor {
+				filtered = append(filtered, t)
+			}
+		}
+		tasks = filtered
+	}
 	blocked, err := store.ListBlocked(db)
 	if err != nil {
 		return failRuntime(err.Error())
@@ -843,6 +884,26 @@ func cmdStatus(args []string) int {
 	ready, err := store.ReadyTasks(db)
 	if err != nil {
 		return failRuntime(err.Error())
+	}
+	if assignedOnly {
+		allowed := make(map[string]struct{}, len(tasks))
+		for _, t := range tasks {
+			allowed[t.ID] = struct{}{}
+		}
+		filteredBlocked := make([]store.BlockedItem, 0, len(blocked))
+		for _, item := range blocked {
+			if _, ok := allowed[item.ID]; ok {
+				filteredBlocked = append(filteredBlocked, item)
+			}
+		}
+		blocked = filteredBlocked
+		filteredReady := make([]store.Task, 0, len(ready))
+		for _, item := range ready {
+			if _, ok := allowed[item.ID]; ok {
+				filteredReady = append(filteredReady, item)
+			}
+		}
+		ready = filteredReady
 	}
 
 	summary := map[string]any{
@@ -949,17 +1010,28 @@ func cmdWhere(args []string) int {
 			jsonOut = true
 		case "--help", "-h":
 			_, _ = fmt.Fprintln(os.Stdout, "Show active sq storage location")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq where [flags]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for where")
+			_, _ = fmt.Fprintln(os.Stdout, "      --json   Output in JSON format")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			printGlobalFlags()
 			return 0
 		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
 		case "--actor", "--db", "--dolt-auto-commit":
-			if i+1 < len(args) {
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
 			}
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
 			}
+			return failUsage("unexpected positional argument: " + a)
 		}
 	}
 
@@ -1352,7 +1424,13 @@ func cmdMail(args []string) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
-		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Mail integration compatibility surface.")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq mail [flags]")
+			return 0
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 < len(args) {

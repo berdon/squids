@@ -121,7 +121,7 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 		t.Fatalf("query --help failed code=%d out=%q", code, out)
 	}
 	code, out, _ = runCLI(t, db, "show", "--help")
-	if code != 0 || !strings.Contains(out, "Usage: sq show") {
+	if code != 0 || !strings.Contains(out, "sq show <id>") || !strings.Contains(out, "--json") {
 		t.Fatalf("show --help failed code=%d out=%q", code, out)
 	}
 	code, out, _ = runCLI(t, db, "help", "ready")
