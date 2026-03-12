@@ -96,6 +96,7 @@ func usage() {
 	fmt.Println("  memories Persistent memory store commands (compat surface)")
 	fmt.Println("  linear   Linear integration commands (compat surface)")
 	fmt.Println("  dolt     Dolt integration commands (compat surface)")
+	fmt.Println("  edit     Edit issue in configured editor (compat surface)")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {

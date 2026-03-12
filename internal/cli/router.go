@@ -127,6 +127,8 @@ func Run(args []string) int {
 		return cmdLinear(args[1:])
 	case "dolt":
 		return cmdDolt(args[1:])
+	case "edit":
+		return cmdEdit(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()

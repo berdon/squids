@@ -299,6 +299,11 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("dolt", "--json")
 	mustFail("dolt", "--wat")
 
+	mustFail("edit")
+	mustFail("edit", "--help")
+	mustFail("edit", "--json")
+	mustFail("edit", "--wat")
+
 	mustOK("hooks")
 	mustOK("hooks", "list")
 	mustOK("hooks", "list", "--json")
