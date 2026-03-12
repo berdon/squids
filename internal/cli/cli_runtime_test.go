@@ -43,7 +43,7 @@ func TestCommandRuntimeFailures(t *testing.T) {
 			func() int { return cmdQuery([]string{"status=open", "--json"}) },
 			func() int { return cmdSearch([]string{"x", "--json"}) },
 			func() int { return cmdCount([]string{"--json"}) },
-			func() int { return cmdStatus() },
+			func() int { return cmdStatus(nil) },
 		}
 		for i, c := range checks {
 			if code := c(); code != 1 {

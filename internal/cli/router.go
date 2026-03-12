@@ -88,7 +88,7 @@ func Run(args []string) int {
 	case "count":
 		return cmdCount(args[1:])
 	case "status", "stats":
-		return cmdStatus()
+		return cmdStatus(args[1:])
 	case "version":
 		return cmdVersion(args[1:])
 	case "where":
