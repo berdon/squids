@@ -54,6 +54,10 @@ func cmdHelp(args []string) int {
 			printLabelHelp()
 			return 0
 		}
+		if target == "query" {
+			printQueryHelp()
+			return 0
+		}
 		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
 		_, _ = fmt.Fprintln(os.Stdout, "Usage: sq "+target+" [args]")
 		return 0
@@ -89,9 +93,31 @@ func printHelpAll() {
 	_, _ = fmt.Fprintln(os.Stdout, "Run `sq help <command>` for command-specific usage.")
 }
 
+func printQueryHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Query issues using expression syntax.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq query <expression> [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  --json        output JSON")
+	_, _ = fmt.Fprintln(os.Stdout, "  -a, --all     compatibility no-op")
+	_, _ = fmt.Fprintln(os.Stdout, "  --sort <key>  compatibility no-op")
+	_, _ = fmt.Fprintln(os.Stdout, "  --reverse     compatibility no-op")
+	_, _ = fmt.Fprintln(os.Stdout, "  --long        compatibility no-op")
+	_, _ = fmt.Fprintln(os.Stdout, "  --parse-only  compatibility no-op")
+	_, _ = fmt.Fprintln(os.Stdout, "  --limit <n>   compatibility no-op")
+}
+
 func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
+	}
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			printQueryHelp()
+			return 0
+		}
 	}
 	filtered := make([]string, 0, len(args))
 	for _, a := range args {
