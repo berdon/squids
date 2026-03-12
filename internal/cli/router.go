@@ -93,6 +93,8 @@ func Run(args []string) int {
 		return cmdHuman(args[1:])
 	case "quickstart":
 		return cmdQuickstart(args[1:])
+	case "setup":
+		return cmdSetup(args[1:])
 	case "history":
 		return cmdHistory(args[1:])
 	case "audit":

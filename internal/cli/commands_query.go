@@ -595,6 +595,25 @@ func cmdQuickstart(args []string) int {
 	return 0
 }
 
+func cmdSetup(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--list", "--check", "--project", "--global", "--remove", "--print", "--stealth", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--add", "--output", "-o", "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("setup compatibility surface only; sq does not manage editor integration templates yet")
+}
+
 func cmdHistory(args []string) int {
 	if len(args) == 0 {
 		return failUsage("usage: sq history <id> [--limit N] [--json]")
