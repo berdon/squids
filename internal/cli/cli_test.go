@@ -105,6 +105,10 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "sq gate list") {
 		t.Fatalf("help gate failed code=%d out=%q", code, out)
 	}
+	code, out, _ = runCLI(t, db, "gate", "--help")
+	if code != 0 || !strings.Contains(out, "Usage:") {
+		t.Fatalf("gate --help failed code=%d out=%q", code, out)
+	}
 
 	code, _, err := runCLI(t, db, "nope")
 	if code != 2 || !strings.Contains(err, "unknown command") {
