@@ -182,7 +182,16 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 
 	mustOK("count", "--json")
 	mustOK("count", "-s", "open", "--json")
-	mustOK("status", "--json")
+	statusJSON := mustOK("status", "--json")
+	if !strings.Contains(statusJSON, `"summary":`) || !strings.Contains(statusJSON, `"total_issues":`) {
+		t.Fatalf("expected structured status json, got %q", statusJSON)
+	}
+	statusHelp := mustOK("status", "--help")
+	if !strings.Contains(statusHelp, "Usage:") || !strings.Contains(statusHelp, "Aliases:") || !strings.Contains(statusHelp, "Global Flags:") {
+		t.Fatalf("expected cobra-style status help, got %q", statusHelp)
+	}
+	mustOK("status", "--assigned")
+	mustOK("status", "--no-activity")
 	mustFail("version", "--wat")
 	v := mustOK("version")
 	if !strings.Contains(v, "sq version") || !strings.Contains(v, "(source)") {

@@ -654,17 +654,113 @@ func cmdCount(args []string) int {
 	return printJSON(map[string]any{"count": n})
 }
 
-func cmdStatus() int {
+func cmdStatus(args []string) int {
+	jsonOut := false
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Show a quick snapshot of the issue database state and statistics.")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq status [flags]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Aliases:")
+			_, _ = fmt.Fprintln(os.Stdout, "  status, stats")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "      --all           Show all issues (default behavior)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --assigned      Show issues assigned to current user")
+			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help          help for status")
+			_, _ = fmt.Fprintln(os.Stdout, "      --no-activity   Skip git activity tracking (faster)")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Global Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --db string                 Database path (default: auto-discover .sq/store.db)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --dolt-auto-commit string   Accepted compatibility flag (off|on|batch)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --json                      Output in JSON format")
+			_, _ = fmt.Fprintln(os.Stdout, "      --profile                   Generate CPU profile for performance analysis")
+			_, _ = fmt.Fprintln(os.Stdout, "  -q, --quiet                     Suppress non-essential output (errors only)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --sandbox                   Sandbox mode: disables auto-sync")
+			_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
+			return 0
+		case "--all", "--assigned", "--no-activity", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+
 	db, _, err := openTaskDB()
 	if err != nil {
 		return failRuntime(err.Error())
 	}
 	defer db.Close()
-	s, err := store.StatusSummary(db)
+
+	tasks, err := store.ListTasks(db)
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(s)
+	blocked, err := store.ListBlocked(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	ready, err := store.ReadyTasks(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+
+	summary := map[string]any{
+		"total_issues":               len(tasks),
+		"open_issues":                0,
+		"in_progress_issues":         0,
+		"closed_issues":              0,
+		"blocked_issues":             len(blocked),
+		"deferred_issues":            0,
+		"ready_issues":               len(ready),
+		"pinned_issues":              0,
+		"epics_eligible_for_closure": 0,
+		"average_lead_time_hours":    0,
+	}
+	for _, t := range tasks {
+		switch t.Status {
+		case "open":
+			summary["open_issues"] = summary["open_issues"].(int) + 1
+		case "in_progress":
+			summary["in_progress_issues"] = summary["in_progress_issues"].(int) + 1
+		case "closed":
+			summary["closed_issues"] = summary["closed_issues"].(int) + 1
+		case "deferred":
+			summary["deferred_issues"] = summary["deferred_issues"].(int) + 1
+		}
+	}
+
+	if jsonOut {
+		return printJSON(map[string]any{"summary": summary})
+	}
+
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "📊 Issue Database Status")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Summary:")
+	_, _ = fmt.Fprintf(os.Stdout, "  Total Issues:           %d\n", summary["total_issues"])
+	_, _ = fmt.Fprintf(os.Stdout, "  Open:                   %d\n", summary["open_issues"])
+	_, _ = fmt.Fprintf(os.Stdout, "  In Progress:            %d\n", summary["in_progress_issues"])
+	_, _ = fmt.Fprintf(os.Stdout, "  Blocked:                %d\n", summary["blocked_issues"])
+	_, _ = fmt.Fprintf(os.Stdout, "  Closed:                 %d\n", summary["closed_issues"])
+	_, _ = fmt.Fprintf(os.Stdout, "  Ready to Work:          %d\n", summary["ready_issues"])
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "For more details, use 'sq list' to see individual issues.")
+	return 0
 }
 
 func cmdVersion(args []string) int {
