@@ -321,11 +321,64 @@ func cmdTodo(args []string) int {
 	}
 }
 
+func printChildrenHelp() {
+	fmt.Println("List all beads that are children of the specified parent bead.")
+	fmt.Println("")
+	fmt.Println("This is a convenience alias for 'sq list --parent <id>'.")
+	fmt.Println("")
+	fmt.Println("Examples:")
+	fmt.Println("  sq children bd-abc123        # List children of bd-abc123")
+	fmt.Println("  sq children bd-abc123 --json # List children in JSON format")
+	fmt.Println("  sq children bd-abc123 --pretty # Show children in tree format")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq children <parent-id> [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help   help for children")
+	fmt.Println("      --pretty Display children in a tree format with status/priority symbols")
+	fmt.Println("")
+	printGlobalFlags()
+}
+
 func cmdChildren(args []string) int {
-	if len(args) == 0 {
-		return failUsage("usage: sq children <parent-id> [--json]")
+	jsonOut := false
+	pretty := false
+	parentID := ""
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--pretty":
+			pretty = true
+		case "--help", "-h":
+			printChildrenHelp()
+			return 0
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit", "--parent":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			if a == "--parent" {
+				parentID = args[i+1]
+			}
+			i++
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			if parentID == "" {
+				parentID = a
+			} else {
+				return failUsage("usage: sq children <parent-id> [flags]")
+			}
+		}
 	}
-	parentID := args[0]
+	if parentID == "" {
+		return failUsage("usage: sq children <parent-id> [flags]")
+	}
 	db, _, err := openTaskDB()
 	if err != nil {
 		return failRuntime(err.Error())
@@ -334,6 +387,19 @@ func cmdChildren(args []string) int {
 	items, err := store.ListChildren(db, parentID)
 	if err != nil {
 		return failRuntime(err.Error())
+	}
+	if jsonOut {
+		return printJSON(items)
+	}
+	if pretty || !jsonOut {
+		if len(items) == 0 {
+			_, _ = fmt.Fprintln(os.Stdout, "No children found")
+			return 0
+		}
+		for _, item := range items {
+			_, _ = fmt.Fprintf(os.Stdout, "├── %s [%s P%d] %s\n", item.ID, item.Status, item.Priority, item.Title)
+		}
+		return 0
 	}
 	return printJSON(items)
 }

@@ -62,6 +62,9 @@ func cmdHelp(args []string) int {
 		case "create":
 			printCreateHelp()
 			return 0
+		case "children":
+			printChildrenHelp()
+			return 0
 		case "label":
 			printLabelHelp()
 			return 0

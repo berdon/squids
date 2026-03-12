@@ -91,6 +91,11 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 		t.Fatalf("help label failed code=%d out=%q", code, out)
 	}
 
+	code, out, _ = runCLI(t, db, "help", "children")
+	if code != 0 || !strings.Contains(out, "sq children <parent-id> [flags]") || !strings.Contains(out, "--pretty") || !strings.Contains(out, "Global Flags:") {
+		t.Fatalf("help children failed code=%d out=%q", code, out)
+	}
+
 	code, out, _ = runCLI(t, db, "label", "--help")
 	if code != 0 || !strings.Contains(out, "sq label add") {
 		t.Fatalf("label --help failed code=%d out=%q", code, out)

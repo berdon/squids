@@ -107,7 +107,16 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("todo", "done", todoID, "--reason", "done", "--json")
 
 	mustFail("children")
-	mustOK("children", id, "--json")
+	childrenHelp := mustOK("children", "--help")
+	if !strings.Contains(childrenHelp, "sq children <parent-id> [flags]") || !strings.Contains(childrenHelp, "--pretty") || !strings.Contains(childrenHelp, "Global Flags:") {
+		t.Fatalf("unexpected children help: %q", childrenHelp)
+	}
+	childID := firstID(t, mustOK("create", "Child", "--deps", "parent-child:"+id, "--json"))
+	childrenPretty := mustOK("children", id)
+	if !strings.Contains(childrenPretty, childID) || !strings.Contains(childrenPretty, "Child") {
+		t.Fatalf("expected human children output, got %q", childrenPretty)
+	}
+	mustOK("children", id, "--parent", id, "--json")
 
 	mustFail("blocked", "--wat")
 	blockedParent := firstID(t, mustOK("create", "blocked parent", "--type", "epic", "--json"))
