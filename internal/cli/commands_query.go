@@ -115,6 +115,28 @@ func cmdQuery(args []string) int {
 	return printJSON(items)
 }
 
+func cmdRestore(args []string) int {
+	if len(args) == 0 {
+		return failUsage("usage: sq restore <issue-id> [--json]")
+	}
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json", "--help", "-h", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op for unsupported backend)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("restore requires Dolt backend; sq uses sqlite backend")
+}
+
 func cmdStale(args []string) int {
 	days := 30
 	for i := 0; i < len(args); i++ {

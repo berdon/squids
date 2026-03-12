@@ -75,6 +75,8 @@ func Run(args []string) int {
 		return cmdOrphans(args[1:])
 	case "search":
 		return cmdSearch(args[1:])
+	case "restore":
+		return cmdRestore(args[1:])
 	case "count":
 		return cmdCount(args[1:])
 	case "status", "stats":
