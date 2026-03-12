@@ -93,6 +93,8 @@ func Run(args []string) int {
 		return cmdQuickstart(args[1:])
 	case "history":
 		return cmdHistory(args[1:])
+	case "audit":
+		return cmdAudit(args[1:])
 	case "swarm":
 		return cmdSwarm(args[1:])
 	case "hooks":

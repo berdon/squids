@@ -621,6 +621,35 @@ func cmdHistory(args []string) int {
 	return failRuntime("history requires Dolt backend; sq uses sqlite backend")
 }
 
+func cmdAudit(args []string) int {
+	if len(args) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "sq audit [record|label]")
+		return 0
+	}
+	sub := args[0]
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json", "--help", "-h", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	switch sub {
+	case "record", "label":
+		return failRuntime("audit logging not yet supported on sq sqlite backend")
+	default:
+		return failUsage("unknown audit subcommand: " + sub)
+	}
+}
+
 func cmdSwarm(args []string) int {
 	if len(args) == 0 {
 		_, _ = fmt.Fprintln(os.Stdout, "sq swarm [create|list|status|validate]")

@@ -231,6 +231,12 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("restore", id, "--json")
 	mustFail("restore", id, "--actor", "tester", "--db", "/tmp/sq.db", "--dolt-auto-commit", "off", "--json")
 
+	mustOK("audit")
+	mustFail("audit", "record")
+	mustFail("audit", "label")
+	mustFail("audit", "record", "--wat")
+	mustFail("audit", "wat")
+
 	mustOK("swarm")
 	mustOK("swarm", "list")
 	mustOK("swarm", "list", "--json")
