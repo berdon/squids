@@ -35,5 +35,8 @@ jobs:
       - name: Run getting-started guide smoke
         run: ./scripts/parity/getting-started-smoke.sh
 
+      - name: Run shell automation suite
+        run: ./tests/shell-automation/run-all.sh
+
       - name: Run concurrency smoke
         run: ./scripts/parity/concurrency-smoke.sh
