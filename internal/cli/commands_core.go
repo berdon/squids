@@ -177,16 +177,42 @@ func cmdShow(args []string) int {
 	if len(args) == 0 {
 		return failUsage("id is required")
 	}
+	id := ""
+	jsonOut := false
+	for _, a := range args {
+		switch a {
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Show details for a single issue.")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage: sq show <id> [--json]")
+			return 0
+		case "--json":
+			jsonOut = true
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			if id == "" {
+				id = a
+			}
+		}
+	}
+	if id == "" {
+		return failUsage("id is required")
+	}
 	db, _, err := openTaskDB()
 	if err != nil {
 		return failRuntime(err.Error())
 	}
 	defer db.Close()
-	t, err := store.ShowTask(db, args[0])
+	t, err := store.ShowTask(db, id)
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(t)
+	if jsonOut {
+		return printJSON(t)
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "%s [%s P%d] %s\n", t.ID, t.IssueType, t.Priority, t.Title)
+	return 0
 }
 
 func cmdList(args []string) int {
