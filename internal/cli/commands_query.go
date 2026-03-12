@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -1562,32 +1561,94 @@ func printCompletionShellHelp(shell string) {
 	printGlobalFlags()
 }
 
-func transformCompletionScript(script string) string {
-	replaced := strings.ReplaceAll(script, "__bdCompleterBlock", "__sqCompleterBlock")
-	replaced = strings.ReplaceAll(replaced, "__bd_", "__sq_")
-	replaced = strings.ReplaceAll(replaced, "_bd()", "_sq()")
-	replaced = strings.ReplaceAll(replaced, "#compdef bd", "#compdef sq")
-	replaced = strings.ReplaceAll(replaced, "compdef _bd bd", "compdef _sq sq")
-	replaced = strings.ReplaceAll(replaced, "complete -F __start_bd bd", "complete -F __start_sq sq")
-	replaced = strings.ReplaceAll(replaced, "complete -o default -F __start_bd bd", "complete -o default -F __start_sq sq")
-	replaced = strings.ReplaceAll(replaced, "complete -o default -o nospace -F __start_bd bd", "complete -o default -o nospace -F __start_sq sq")
-	replaced = strings.ReplaceAll(replaced, "__start_bd", "__start_sq")
-	replaced = strings.ReplaceAll(replaced, "\tbd ", "\tsq ")
-	replaced = strings.ReplaceAll(replaced, " bd ", " sq ")
-	replaced = strings.ReplaceAll(replaced, "[bd]", "[sq]")
-	replaced = strings.ReplaceAll(replaced, "'bd'", "'sq'")
-	replaced = strings.ReplaceAll(replaced, "\"bd\"", "\"sq\"")
-	replaced = strings.ReplaceAll(replaced, "-CommandName 'bd'", "-CommandName 'sq'")
-	replaced = strings.ReplaceAll(replaced, "-CommandName bd", "-CommandName sq")
-	return replaced
+func completionCommands() []string {
+	return []string{"help", "init", "ready", "create", "q", "show", "list", "update", "close", "reopen", "delete", "label", "dep", "comments", "todo", "children", "blocked", "defer", "undefer", "set-state", "rename", "rename-prefix", "duplicate", "supersede", "types", "query", "stale", "orphans", "search", "gate", "backup", "purge", "restore", "count", "status", "version", "where", "info", "human", "quickstart", "mail", "mol", "setup", "history", "audit", "swarm", "hooks", "completion", "onboard", "import-beads", "gitlab", "memories", "linear", "dolt", "edit"}
 }
 
-func generateCompletionFromBD(shell string) (string, bool) {
-	out, err := exec.Command("bd", "completion", shell).Output()
-	if err != nil {
-		return "", false
+func generateBashCompletion() string {
+	cmds := strings.Join(completionCommands(), " ")
+	return fmt.Sprintf(`# bash completion for sq
+__sq_commands="%s"
+__start_sq() {
+    local cur prev
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    if [[ ${COMP_CWORD} -eq 1 ]]; then
+        COMPREPLY=( $(compgen -W "${__sq_commands}" -- "$cur") )
+        return 0
+    fi
+    case "$prev" in
+        completion)
+            COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- "$cur") )
+            return 0
+            ;;
+    esac
+}
+complete -o default -F __start_sq sq
+`, cmds)
+}
+
+func generateZshCompletion() string {
+	parts := make([]string, 0, len(completionCommands()))
+	for _, cmd := range completionCommands() {
+		parts = append(parts, fmt.Sprintf("'%s'", cmd))
 	}
-	return transformCompletionScript(string(out)), true
+	return fmt.Sprintf(`#compdef sq
+compdef _sq sq
+
+# zsh completion for sq                                   -*- shell-script -*-
+
+_sq() {
+    local -a commands shells
+    commands=(%s)
+    shells=(bash zsh fish powershell)
+    if (( CURRENT == 2 )); then
+        compadd -- $commands
+        return
+    fi
+    if (( CURRENT == 3 )) && [[ ${words[2]} == completion ]]; then
+        compadd -- $shells
+        return
+    fi
+}
+`, strings.Join(parts, " "))
+}
+
+func generateFishCompletion() string {
+	lines := []string{"# fish completion for sq                                   -*- shell-script -*-", "complete -c sq -f"}
+	for _, cmd := range completionCommands() {
+		lines = append(lines, fmt.Sprintf("complete -c sq -n '__fish_use_subcommand' -a '%s'", cmd))
+	}
+	for _, shell := range []string{"bash", "zsh", "fish", "powershell"} {
+		lines = append(lines, fmt.Sprintf("complete -c sq -n '__fish_seen_subcommand_from completion' -a '%s'", shell))
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func generatePowershellCompletion() string {
+	quoted := make([]string, 0, len(completionCommands()))
+	for _, cmd := range completionCommands() {
+		quoted = append(quoted, fmt.Sprintf("'%s'", cmd))
+	}
+	return fmt.Sprintf(`# powershell completion for sq                                   -*- shell-script -*-
+Register-ArgumentCompleter -Native -CommandName 'sq' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    $commands = @(%s)
+    $elements = $commandAst.CommandElements | ForEach-Object { $_.Extent.Text }
+    if ($elements.Count -le 2) {
+        $commands | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+        return
+    }
+    if ($elements.Count -eq 3 -and $elements[1] -eq 'completion') {
+        @('bash','zsh','fish','powershell') | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+    }
+}
+`, strings.Join(quoted, ", "))
 }
 
 func cmdCompletion(args []string) int {
@@ -1633,19 +1694,15 @@ func cmdCompletion(args []string) int {
 		return 0
 	}
 	script := ""
-	if generated, ok := generateCompletionFromBD(shell); ok {
-		script = generated
-	} else {
-		switch shell {
-		case "bash":
-			script = "# bash completion for sq\n_complete_sq() { COMPREPLY=(\"help\" \"init\" \"list\" \"show\" \"create\" \"update\" \"close\" \"ready\"); }\ncomplete -F _complete_sq sq\n"
-		case "zsh":
-			script = "#compdef sq\ncompdef _sq sq\n\n# zsh completion for sq                                   -*- shell-script -*-\n\n_sq() {\n    _arguments '*: :->cmds'\n}\n"
-		case "fish":
-			script = "complete -c sq -f\ncomplete -c sq -a 'help init list show create update close ready'\n"
-		case "powershell":
-			script = "Register-ArgumentCompleter -Native -CommandName sq -ScriptBlock { param($wordToComplete) 'help','init','list','show','create','update','close','ready' | Where-Object { $_ -like \"$wordToComplete*\" } }\n"
-		}
+	switch shell {
+	case "bash":
+		script = generateBashCompletion()
+	case "zsh":
+		script = generateZshCompletion()
+	case "fish":
+		script = generateFishCompletion()
+	case "powershell":
+		script = generatePowershellCompletion()
 	}
 	_, err := fmt.Fprint(os.Stdout, script)
 	if err != nil {

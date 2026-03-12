@@ -6,7 +6,7 @@ import (
 	"github.com/berdon/squids/internal/store"
 )
 
-func TestReadyHelperBranches(t *testing.T) {
+func TestReadyHelperBranchesLegacy(t *testing.T) {
 	if got := splitCSV(" a, b ,,c "); len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
 		t.Fatalf("splitCSV unexpected: %#v", got)
 	}
@@ -36,7 +36,7 @@ func TestReadyHelperBranches(t *testing.T) {
 	}
 }
 
-func TestSortReadyTasksBranches(t *testing.T) {
+func TestSortReadyTasksBranchesLegacy(t *testing.T) {
 	base := []store.Task{
 		{ID: "bd-b", Priority: 2, CreatedAt: "2026-03-12T02:00:00Z"},
 		{ID: "bd-a", Priority: 1, CreatedAt: "2026-03-12T03:00:00Z"},

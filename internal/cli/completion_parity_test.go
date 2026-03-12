@@ -20,8 +20,8 @@ func TestCompletionParityOutputs(t *testing.T) {
 	}{
 		{[]string{"completion", "bash"}, []string{"# bash completion", "__start_sq", "complete -o default -F __start_sq sq"}},
 		{[]string{"completion", "zsh"}, []string{"#compdef sq", "compdef _sq sq", "# zsh completion for sq"}},
-		{[]string{"completion", "fish"}, []string{"# fish completion for sq", "function __sq_debug", "complete -c sq"}},
-		{[]string{"completion", "powershell"}, []string{"# powershell completion for sq", "function __sq_debug", "-CommandName 'sq'"}},
+		{[]string{"completion", "fish"}, []string{"# fish completion for sq", "complete -c sq -f", "__fish_seen_subcommand_from completion"}},
+		{[]string{"completion", "powershell"}, []string{"# powershell completion for sq", "Register-ArgumentCompleter", "-CommandName 'sq'"}},
 	}
 	for _, tc := range cases {
 		code, out, errOut = runCLI(t, db, tc.args...)
@@ -50,7 +50,7 @@ func TestCompletionParityHelpAndFlags(t *testing.T) {
 	}
 
 	code, out, errOut = runCLI(t, db, "completion", "fish", "--no-descriptions")
-	if code != 0 || errOut != "" || !strings.Contains(out, "# fish completion for sq") || !strings.Contains(out, "complete -c sq -e") {
+	if code != 0 || errOut != "" || !strings.Contains(out, "# fish completion for sq") || !strings.Contains(out, "complete -c sq -f") {
 		t.Fatalf("completion fish --no-descriptions failed code=%d out=%q err=%q", code, out, errOut)
 	}
 
