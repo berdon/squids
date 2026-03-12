@@ -331,6 +331,68 @@ func TestCmdImportBeads_Code4OnDependencyReadFailure(t *testing.T) {
 	}
 }
 
+func TestImportFromSource_IssuesSchemaVariant(t *testing.T) {
+	tmp := t.TempDir()
+	source := filepath.Join(tmp, "issues.sqlite")
+	target := filepath.Join(tmp, "target.sqlite")
+
+	sdb, err := sql.Open("sqlite3", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = sdb.Exec(`CREATE TABLE issues (id TEXT,title TEXT,description TEXT,status TEXT,priority INTEGER,issue_type TEXT,assignee TEXT,owner TEXT,metadata_json TEXT,close_reason TEXT,created_at TEXT,updated_at TEXT,closed_at TEXT)`)
+	_, _ = sdb.Exec(`CREATE TABLE issue_labels (issue_id TEXT,label TEXT)`)
+	_, _ = sdb.Exec(`CREATE TABLE issue_deps (issue_id TEXT,depends_on_id TEXT,dep_type TEXT)`)
+	_, _ = sdb.Exec(`INSERT INTO issues(id,title,description,status,priority,issue_type,assignee,owner,metadata_json,close_reason,created_at,updated_at,closed_at) VALUES('bd-a','A','desc','open',1,'task','alice','alice','{}','','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','')`)
+	_, _ = sdb.Exec(`INSERT INTO issues(id,title,description,status,priority,issue_type,assignee,owner,metadata_json,close_reason,created_at,updated_at,closed_at) VALUES('bd-b','B','desc','open',2,'task','','','{}','','2026-01-01T00:00:01Z','2026-01-01T00:00:01Z','')`)
+	_, _ = sdb.Exec(`INSERT INTO issue_labels(issue_id,label) VALUES('bd-a','triage')`)
+	_, _ = sdb.Exec(`INSERT INTO issue_deps(issue_id,depends_on_id,dep_type) VALUES('bd-a','bd-b','blocks')`)
+	_ = sdb.Close()
+
+	src, err := openSQLite(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	dst, err := store.Open(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dst.Close()
+	_ = store.Init(dst)
+
+	report, err := importFromSource(src, dst, source, importOptions{})
+	if err != nil {
+		t.Fatalf("issues variant import failed: %v", err)
+	}
+	if report.Tasks["created"] != 2 {
+		t.Fatalf("expected 2 created tasks, got %+v", report.Tasks)
+	}
+	if report.Deps["created"] != 1 {
+		t.Fatalf("expected 1 dependency created, got %+v", report.Deps)
+	}
+}
+
+func TestCmdImportBeads_SchemaValidationAcceptsIssuesTable(t *testing.T) {
+	tmp := t.TempDir()
+	source := filepath.Join(tmp, "issues_only.sqlite")
+	db, err := sql.Open("sqlite3", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = db.Exec(`CREATE TABLE issues (id TEXT,title TEXT)`)
+	_ = db.Close()
+
+	src, err := openSQLite(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	if err := validateSourceSchema(src); err != nil {
+		t.Fatalf("expected issues schema to validate: %v", err)
+	}
+}
+
 func TestCmdImportBeads_SuccessPlainTextAndMappingError(t *testing.T) {
 	tmp := t.TempDir()
 	target := filepath.Join(tmp, "target.sqlite")

@@ -2,10 +2,12 @@ package cli
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -220,10 +222,10 @@ func hasTable(db *sql.DB, name string) bool {
 }
 
 func validateSourceSchema(src *sql.DB) error {
-	if !hasTable(src, "tasks") {
-		return errors.New("source validation failed: required table 'tasks' missing")
+	if hasTable(src, "tasks") || hasTable(src, "issues") {
+		return nil
 	}
-	return nil
+	return errors.New("source validation failed: required table 'tasks' or 'issues' missing")
 }
 
 func importFromSource(src, dst *sql.DB, sourcePath string, opts importOptions) (*importReport, error) {
@@ -241,18 +243,13 @@ func importFromSource(src, dst *sql.DB, sourcePath string, opts importOptions) (
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	rows, err := src.Query(`SELECT id,title,COALESCE(description,''),COALESCE(status,'open'),COALESCE(priority,2),COALESCE(issue_type,'task'),COALESCE(assignee,''),COALESCE(owner,''),COALESCE(labels_json,'[]'),COALESCE(deps_json,'[]'),COALESCE(metadata_json,'{}'),COALESCE(close_reason,''),COALESCE(created_at,''),COALESCE(updated_at,''),COALESCE(closed_at,'') FROM tasks ORDER BY created_at, id`)
+	tasks, schemaVariant, err := loadSourceTasks(src)
 	if err != nil {
-		return nil, fmt.Errorf("read source tasks: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var id, title, desc, status, issueType, assignee, owner, labels, deps, metadata, closeReason, createdAt, updatedAt, closedAt string
-		var priority int
-		if err := rows.Scan(&id, &title, &desc, &status, &priority, &issueType, &assignee, &owner, &labels, &deps, &metadata, &closeReason, &createdAt, &updatedAt, &closedAt); err != nil {
-			return nil, fmt.Errorf("mapping tasks row: %w", err)
-		}
+	for _, task := range tasks {
+		id, title := task["id"], task["title"]
 		if strings.TrimSpace(id) == "" || strings.TrimSpace(title) == "" {
 			report.Warnings = append(report.Warnings, "skipped task with empty id/title")
 			continue
@@ -282,7 +279,22 @@ ON CONFLICT(id) DO UPDATE SET
   created_at=excluded.created_at,
   updated_at=excluded.updated_at,
   closed_at=excluded.closed_at`,
-				id, title, desc, status, priority, issueType, assignee, owner, labels, deps, metadata, closeReason, createdAt, updatedAt, closedAt)
+				id,
+				title,
+				task["description"],
+				task["status"],
+				toInt(task["priority"], 2),
+				task["issue_type"],
+				task["assignee"],
+				task["owner"],
+				task["labels_json"],
+				task["deps_json"],
+				task["metadata_json"],
+				task["close_reason"],
+				task["created_at"],
+				task["updated_at"],
+				task["closed_at"],
+			)
 			if err != nil {
 				return nil, fmt.Errorf("write task %s: %w", id, err)
 			}
@@ -294,20 +306,27 @@ ON CONFLICT(id) DO UPDATE SET
 			report.Tasks["updated"]++
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate source tasks: %w", err)
+
+	if schemaVariant == "issues" {
+		report.Warnings = append(report.Warnings, "imported from issues-style beads schema")
 	}
 
-	if hasTable(src, "dependencies") {
-		depRows, err := src.Query(`SELECT issue_id,depends_on_id,COALESCE(dep_type,'blocks') FROM dependencies`)
+	if hasTable(src, "dependencies") || hasTable(src, "issue_deps") {
+		depQuery := `SELECT issue_id,depends_on_id,COALESCE(dep_type,'blocks') FROM dependencies`
+		depName := "dependencies"
+		if hasTable(src, "issue_deps") && !hasTable(src, "dependencies") {
+			depQuery = `SELECT issue_id,depends_on_id,COALESCE(dep_type,'blocks') FROM issue_deps`
+			depName = "issue_deps"
+		}
+		depRows, err := src.Query(depQuery)
 		if err != nil {
-			return nil, fmt.Errorf("read source dependencies: %w", err)
+			return nil, fmt.Errorf("read source %s: %w", depName, err)
 		}
 		defer depRows.Close()
 		for depRows.Next() {
 			var issueID, dependsOnID, depType string
 			if err := depRows.Scan(&issueID, &dependsOnID, &depType); err != nil {
-				return nil, fmt.Errorf("mapping dependencies row: %w", err)
+				return nil, fmt.Errorf("mapping %s row: %w", depName, err)
 			}
 			if issueID == dependsOnID || issueID == "" || dependsOnID == "" {
 				report.Warnings = append(report.Warnings, fmt.Sprintf("skipped invalid dependency %s->%s", issueID, dependsOnID))
@@ -368,4 +387,120 @@ ON CONFLICT(id) DO UPDATE SET
 		return nil, fmt.Errorf("commit import: %w", err)
 	}
 	return report, nil
+}
+
+func toInt(raw string, def int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+func loadSourceTasks(src *sql.DB) ([]map[string]string, string, error) {
+	if hasTable(src, "tasks") {
+		rows, err := src.Query(`SELECT id,title,COALESCE(description,''),COALESCE(status,'open'),COALESCE(priority,2),COALESCE(issue_type,'task'),COALESCE(assignee,''),COALESCE(owner,''),COALESCE(labels_json,'[]'),COALESCE(deps_json,'[]'),COALESCE(metadata_json,'{}'),COALESCE(close_reason,''),COALESCE(created_at,''),COALESCE(updated_at,''),COALESCE(closed_at,'') FROM tasks ORDER BY created_at, id`)
+		if err != nil {
+			return nil, "", fmt.Errorf("read source tasks: %w", err)
+		}
+		defer rows.Close()
+		out := make([]map[string]string, 0)
+		for rows.Next() {
+			var id, title, desc, status, issueType, assignee, owner, labels, deps, metadata, closeReason, createdAt, updatedAt, closedAt string
+			var priority int
+			if err := rows.Scan(&id, &title, &desc, &status, &priority, &issueType, &assignee, &owner, &labels, &deps, &metadata, &closeReason, &createdAt, &updatedAt, &closedAt); err != nil {
+				return nil, "", fmt.Errorf("mapping tasks row: %w", err)
+			}
+			out = append(out, map[string]string{
+				"id": id, "title": title, "description": desc, "status": status, "priority": strconv.Itoa(priority), "issue_type": issueType,
+				"assignee": assignee, "owner": owner, "labels_json": labels, "deps_json": deps, "metadata_json": metadata,
+				"close_reason": closeReason, "created_at": createdAt, "updated_at": updatedAt, "closed_at": closedAt,
+			})
+		}
+		if err := rows.Err(); err != nil {
+			return nil, "", fmt.Errorf("iterate source tasks: %w", err)
+		}
+		return out, "tasks", nil
+	}
+
+	if !hasTable(src, "issues") {
+		return nil, "", errors.New("source validation failed: required table 'tasks' or 'issues' missing")
+	}
+
+	rows, err := src.Query(`SELECT id,COALESCE(title,''),COALESCE(description,''),COALESCE(status,'open'),CAST(COALESCE(priority,2) AS TEXT),COALESCE(issue_type,'task'),COALESCE(assignee,''),COALESCE(owner,''),COALESCE(metadata_json,'{}'),COALESCE(close_reason,''),COALESCE(created_at,''),COALESCE(updated_at,''),COALESCE(closed_at,'') FROM issues ORDER BY created_at, id`)
+	if err != nil {
+		return nil, "", fmt.Errorf("read source issues: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]map[string]string, 0)
+	for rows.Next() {
+		var id, title, desc, status, priority, issueType, assignee, owner, metadata, closeReason, createdAt, updatedAt, closedAt string
+		if err := rows.Scan(&id, &title, &desc, &status, &priority, &issueType, &assignee, &owner, &metadata, &closeReason, &createdAt, &updatedAt, &closedAt); err != nil {
+			return nil, "", fmt.Errorf("mapping issues row: %w", err)
+		}
+		labelsJSON, err := loadIssueLabelsJSON(src, id)
+		if err != nil {
+			return nil, "", err
+		}
+		depsJSON, err := loadIssueDepsJSON(src, id)
+		if err != nil {
+			return nil, "", err
+		}
+		out = append(out, map[string]string{
+			"id": id, "title": title, "description": desc, "status": status, "priority": priority, "issue_type": issueType,
+			"assignee": assignee, "owner": owner, "labels_json": labelsJSON, "deps_json": depsJSON, "metadata_json": metadata,
+			"close_reason": closeReason, "created_at": createdAt, "updated_at": updatedAt, "closed_at": closedAt,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("iterate source issues: %w", err)
+	}
+	return out, "issues", nil
+}
+
+func loadIssueLabelsJSON(src *sql.DB, issueID string) (string, error) {
+	if !hasTable(src, "issue_labels") {
+		return "[]", nil
+	}
+	rows, err := src.Query(`SELECT label FROM issue_labels WHERE issue_id=? ORDER BY label`, issueID)
+	if err != nil {
+		return "", fmt.Errorf("read issue labels for %s: %w", issueID, err)
+	}
+	defer rows.Close()
+	labels := make([]string, 0)
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return "", fmt.Errorf("mapping issue_labels row: %w", err)
+		}
+		if strings.TrimSpace(label) != "" {
+			labels = append(labels, label)
+		}
+	}
+	b, _ := json.Marshal(labels)
+	return string(b), nil
+}
+
+func loadIssueDepsJSON(src *sql.DB, issueID string) (string, error) {
+	if !hasTable(src, "issue_deps") {
+		return "[]", nil
+	}
+	rows, err := src.Query(`SELECT depends_on_id FROM issue_deps WHERE issue_id=? ORDER BY depends_on_id`, issueID)
+	if err != nil {
+		return "", fmt.Errorf("read issue deps for %s: %w", issueID, err)
+	}
+	defer rows.Close()
+	deps := make([]string, 0)
+	for rows.Next() {
+		var dep string
+		if err := rows.Scan(&dep); err != nil {
+			return "", fmt.Errorf("mapping issue_deps row: %w", err)
+		}
+		if strings.TrimSpace(dep) != "" {
+			deps = append(deps, dep)
+		}
+	}
+	b, _ := json.Marshal(deps)
+	return string(b), nil
 }
