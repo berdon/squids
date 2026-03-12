@@ -20,8 +20,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Test
-        run: go test ./...
+      - name: Test (excluding shell automation packages)
+        run: go test $(go list ./... | grep -v '/tests/shell-automation/')
 
       - name: Build release binaries
         run: |

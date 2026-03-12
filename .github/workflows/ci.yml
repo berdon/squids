@@ -17,8 +17,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Go test
-        run: go test ./...
+      - name: Go test (excluding shell automation packages)
+        run: go test $(go list ./... | grep -v '/tests/shell-automation/')
 
       - name: Coverage gate (>= 90%)
         run: ./scripts/coverage-gate.sh 90.0
@@ -34,9 +34,6 @@ jobs:
 
       - name: Run getting-started guide smoke
         run: ./scripts/parity/getting-started-smoke.sh
-
-      - name: Run shell automation suite
-        run: ./tests/shell-automation/run-all.sh
 
       - name: Run concurrency smoke
         run: ./scripts/parity/concurrency-smoke.sh

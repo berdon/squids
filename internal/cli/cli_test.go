@@ -155,6 +155,38 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	}
 }
 
+func TestListAndReadyNestChildrenUnderEpics(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
+		t.Fatalf("init failed: %d", code)
+	}
+
+	code, out, _ := runCLI(t, db, "create", "Epic", "--type", "epic", "--priority", "1", "--json")
+	if code != 0 {
+		t.Fatalf("create epic failed: %d", code)
+	}
+	epicID := firstID(t, out)
+
+	code, out, _ = runCLI(t, db, "create", "Child", "--type", "task", "--priority", "2", "--deps", "parent-child:"+epicID, "--json")
+	if code != 0 {
+		t.Fatalf("create child failed: %d", code)
+	}
+	childID := firstID(t, out)
+
+	code, out, _ = runCLI(t, db, "list")
+	if code != 0 || !strings.Contains(out, epicID) || !strings.Contains(out, "└── ○ "+childID) {
+		t.Fatalf("list nesting failed code=%d out=%q", code, out)
+	}
+	if strings.Index(out, epicID) > strings.Index(out, childID) {
+		t.Fatalf("expected epic before child in list output: %q", out)
+	}
+
+	code, out, _ = runCLI(t, db, "ready")
+	if code != 0 || !strings.Contains(out, epicID) || !strings.Contains(out, "└── ○ "+childID) {
+		t.Fatalf("ready nesting failed code=%d out=%q", code, out)
+	}
+}
+
 func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "tasks.sqlite")
 
@@ -191,6 +223,9 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	}
 	if code, out, _ = runCLI(t, db, "show", aID); code != 0 || !strings.Contains(out, aID) {
 		t.Fatalf("show human failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "list"); code != 0 || !strings.Contains(out, "Found 3 issue(s):") || !strings.Contains(out, aID) || strings.Contains(out, "\"id\"") {
+		t.Fatalf("list human output failed code=%d out=%q", code, out)
 	}
 	if code, out, _ = runCLI(t, db, "list", "--json", "--flat", "--no-pager"); code != 0 || !strings.Contains(out, aID) {
 		t.Fatalf("list failed out=%q", out)
@@ -259,6 +294,9 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 		t.Fatalf("todo done failed")
 	}
 
+	if code, out, _ = runCLI(t, db, "ready", "--assignee", "bob", "--label", "backend", "--metadata-field", "team=platform", "--parent", aID, "--type", "task", "--priority", "2", "--limit", "1"); code != 0 || !strings.Contains(out, "Found 1 ready issue(s):") || !strings.Contains(out, childID) || strings.Contains(out, "\"id\": \""+bID+"\"") {
+		t.Fatalf("ready human output failed code=%d out=%q", code, out)
+	}
 	if code, out, _ = runCLI(t, db, "ready", "--assignee", "bob", "--label", "backend", "--metadata-field", "team=platform", "--parent", aID, "--type", "task", "--priority", "2", "--limit", "1", "--json"); code != 0 || !strings.Contains(out, childID) || strings.Contains(out, "\"id\": \""+bID+"\"") {
 		t.Fatalf("ready filtered failed code=%d out=%q", code, out)
 	}

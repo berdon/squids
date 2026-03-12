@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"sort"
@@ -50,8 +51,8 @@ func printReadyHelp() {
 	_, _ = fmt.Fprintln(os.Stdout, "      --mol string          Accepted for bd parity (no-op)")
 	_, _ = fmt.Fprintln(os.Stdout, "      --mol-type string     Accepted for bd parity (no-op)")
 	_, _ = fmt.Fprintln(os.Stdout, "      --parent string       Filter to descendants of this parent issue")
-	_, _ = fmt.Fprintln(os.Stdout, "      --plain               Accepted for bd parity (JSON output retained)")
-	_, _ = fmt.Fprintln(os.Stdout, "      --pretty              Accepted for bd parity (JSON output retained)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --plain               Accepted for bd parity (plain text is the default)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --pretty              Accepted for bd parity (plain text is the default)")
 	_, _ = fmt.Fprintln(os.Stdout, "  -p, --priority int       Filter by priority")
 	_, _ = fmt.Fprintln(os.Stdout, "      --rig string          Accepted for bd parity (no-op)")
 	_, _ = fmt.Fprintln(os.Stdout, "  -s, --sort string        Sort policy: priority (default), oldest")
@@ -65,6 +66,7 @@ func cmdReady(args []string) int {
 	var (
 		assignee       *string
 		hasMetadataKey string
+		jsonOut        bool
 		labelsAll      []string
 		labelsAny      []string
 		limit          int
@@ -82,7 +84,9 @@ func cmdReady(args []string) int {
 		case "--help", "-h":
 			printReadyHelp()
 			return 0
-		case "--json", "--gated", "--include-deferred", "--include-ephemeral", "--plain", "--pretty", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--json":
+			jsonOut = true
+		case "--gated", "--include-deferred", "--include-ephemeral", "--plain", "--pretty", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
 		case "--actor", "--db", "--dolt-auto-commit", "--mol", "--mol-type", "--rig":
 			if i+1 >= len(args) {
@@ -213,7 +217,10 @@ func cmdReady(args []string) int {
 	if limit > 0 && len(filtered) > limit {
 		filtered = filtered[:limit]
 	}
-	return printJSON(filtered)
+	if jsonOut {
+		return printJSON(filtered)
+	}
+	return printTaskCollection(db, filtered, "Found %d ready issue(s):\n", "No ready issues.\n")
 }
 
 func splitCSV(s string) []string {
@@ -298,6 +305,142 @@ func sortReadyTasks(tasks []store.Task, sortBy string) {
 	default:
 		// preserve store order for unknown values to keep compatibility forgiving
 	}
+}
+
+func printTaskCollection(db *sql.DB, tasks []store.Task, headingFmt, emptyMsg string) int {
+	if len(tasks) == 0 {
+		_, _ = fmt.Fprint(os.Stdout, emptyMsg)
+		return 0
+	}
+
+	allTasks, err := store.ListTasks(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	parentByChild, err := parentLinks(db)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+
+	allByID := make(map[string]store.Task, len(allTasks))
+	order := make(map[string]int, len(allTasks))
+	for i, task := range allTasks {
+		allByID[task.ID] = task
+		order[task.ID] = i
+	}
+
+	visible := make(map[string]store.Task, len(tasks))
+	for _, task := range tasks {
+		visible[task.ID] = task
+		seen := map[string]struct{}{task.ID: {}}
+		for parentID := parentByChild[task.ID]; parentID != ""; parentID = parentByChild[parentID] {
+			if _, ok := seen[parentID]; ok {
+				break
+			}
+			seen[parentID] = struct{}{}
+			if parent, ok := allByID[parentID]; ok {
+				visible[parentID] = parent
+			}
+		}
+	}
+
+	childrenByParent := map[string][]string{}
+	roots := make([]string, 0, len(visible))
+	for id := range visible {
+		parentID := parentByChild[id]
+		if parentID != "" {
+			if _, ok := visible[parentID]; ok {
+				childrenByParent[parentID] = append(childrenByParent[parentID], id)
+				continue
+			}
+		}
+		roots = append(roots, id)
+	}
+
+	sortIDsByOrder := func(ids []string) {
+		sort.SliceStable(ids, func(i, j int) bool {
+			return order[ids[i]] < order[ids[j]]
+		})
+	}
+	sortIDsByOrder(roots)
+	for parentID := range childrenByParent {
+		sortIDsByOrder(childrenByParent[parentID])
+	}
+
+	_, _ = fmt.Fprintf(os.Stdout, headingFmt, len(tasks))
+	for i, id := range roots {
+		last := i == len(roots)-1
+		printTaskTree(id, visible, childrenByParent, "", last, true)
+	}
+	return 0
+}
+
+func printTaskTree(id string, visible map[string]store.Task, childrenByParent map[string][]string, prefix string, last bool, root bool) {
+	task, ok := visible[id]
+	if !ok {
+		return
+	}
+	linePrefix := prefix
+	if !root {
+		connector := "├── "
+		if last {
+			connector = "└── "
+		}
+		linePrefix += connector
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "%s%s\n", linePrefix, humanTaskSummary(task))
+
+	children := childrenByParent[id]
+	nextPrefix := prefix
+	if !root {
+		if last {
+			nextPrefix += "    "
+		} else {
+			nextPrefix += "│   "
+		}
+	}
+	for i, childID := range children {
+		printTaskTree(childID, visible, childrenByParent, nextPrefix, i == len(children)-1, false)
+	}
+}
+
+func humanTaskSummary(t store.Task) string {
+	statusIcon := "○"
+	statusBadge := "●"
+	if strings.EqualFold(t.Status, "closed") {
+		statusIcon = "✓"
+		statusBadge = "✓"
+	}
+	assignee := ""
+	if strings.TrimSpace(t.Assignee) != "" {
+		assignee = " @" + t.Assignee
+	}
+	issueType := t.IssueType
+	if issueType == "" {
+		issueType = "task"
+	}
+	return fmt.Sprintf("%s %s [%s P%d] [%s]%s - %s", statusIcon, t.ID, statusBadge, t.Priority, issueType, assignee, t.Title)
+}
+
+func parentLinks(db *sql.DB) (map[string]string, error) {
+	rows, err := db.Query(`SELECT issue_id, depends_on_id FROM dependencies WHERE dep_type='parent-child' ORDER BY depends_on_id, issue_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	links := map[string]string{}
+	for rows.Next() {
+		var issueID, parentID string
+		if err := rows.Scan(&issueID, &parentID); err != nil {
+			return nil, err
+		}
+		links[issueID] = parentID
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return links, nil
 }
 
 func cmdCreate(args []string) int {
@@ -474,8 +617,13 @@ func cmdShow(args []string) int {
 }
 
 func cmdList(args []string) int {
+	jsonOut := false
 	for _, a := range args {
-		if a == "--json" || a == "--flat" || a == "--no-pager" {
+		if a == "--json" {
+			jsonOut = true
+			continue
+		}
+		if a == "--flat" || a == "--no-pager" {
 			continue
 		}
 		if strings.HasPrefix(a, "-") {
@@ -491,7 +639,10 @@ func cmdList(args []string) int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(tasks)
+	if jsonOut {
+		return printJSON(tasks)
+	}
+	return printTaskCollection(db, tasks, "Found %d issue(s):\n", "No issues found.\n")
 }
 
 func cmdUpdate(args []string) int {
