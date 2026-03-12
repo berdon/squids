@@ -192,8 +192,8 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("count", "--json")
 	mustOK("count", "-s", "open", "--json")
 	statusJSON := mustOK("status", "--json")
-	if !strings.Contains(statusJSON, `"summary":`) || !strings.Contains(statusJSON, `"total_issues":`) {
-		t.Fatalf("expected structured status json, got %q", statusJSON)
+	if !strings.Contains(statusJSON, `"summary":`) || !strings.Contains(statusJSON, `"total_issues":`) || !strings.Contains(statusJSON, `"open":`) || !strings.Contains(statusJSON, `"in_progress":`) || !strings.Contains(statusJSON, `"closed":`) {
+		t.Fatalf("expected structured and parity-compatible status json, got %q", statusJSON)
 	}
 	statusHelp := mustOK("status", "--help")
 	if !strings.Contains(statusHelp, "Usage:") || !strings.Contains(statusHelp, "Aliases:") || !strings.Contains(statusHelp, "Global Flags:") {
@@ -257,7 +257,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("human", "wat")
 
 	quickstart := mustOK("quickstart")
-	if !strings.Contains(quickstart, "GETTING STARTED") || !strings.Contains(quickstart, "READY WORK") {
+	if !strings.Contains(quickstart, "quickstart") || !strings.Contains(quickstart, "GETTING STARTED") || !strings.Contains(quickstart, "READY WORK") {
 		t.Fatalf("expected detailed quickstart output, got %q", quickstart)
 	}
 	quickstartHelp := mustOK("quickstart", "--help")

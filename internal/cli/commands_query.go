@@ -751,7 +751,13 @@ func cmdStatus(args []string) int {
 	}
 
 	if jsonOut {
-		return printJSON(map[string]any{"summary": summary})
+		payload := map[string]any{"summary": summary}
+		payload["open"] = summary["open_issues"]
+		payload["in_progress"] = summary["in_progress_issues"]
+		payload["closed"] = summary["closed_issues"]
+		payload["blocked"] = summary["blocked_issues"]
+		payload["ready"] = summary["ready_issues"]
+		return printJSON(payload)
 	}
 
 	_, _ = fmt.Fprintln(os.Stdout, "")
@@ -1125,6 +1131,7 @@ func cmdQuickstart(args []string) int {
 		}
 	}
 	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "sq quickstart")
 	_, _ = fmt.Fprintln(os.Stdout, "sq - squids task CLI")
 	_, _ = fmt.Fprintln(os.Stdout, "")
 	_, _ = fmt.Fprintln(os.Stdout, "Issues chained together like squids.")

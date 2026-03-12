@@ -338,7 +338,7 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, out, _ = runCLI(t, db, "backup", "restore", backupPath, "--json"); code != 0 || !strings.Contains(out, "restored_from") {
 		t.Fatalf("backup restore failed code=%d out=%q", code, out)
 	}
-	if code, out, _ = runCLI(t, db, "status", "--json"); code != 0 || !strings.Contains(out, "\"summary\"") {
+	if code, out, _ = runCLI(t, db, "status", "--json"); code != 0 || !strings.Contains(out, "\"summary\"") || !strings.Contains(out, "\"open\"") || !strings.Contains(out, "\"closed\"") {
 		t.Fatalf("status failed code=%d out=%q", code, out)
 	}
 	if code, out, _ = runCLI(t, db, "status"); code != 0 || !strings.Contains(out, "Issue Database Status") || !strings.Contains(out, "Ready to Work") {
