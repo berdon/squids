@@ -306,6 +306,25 @@ func cmdGate(args []string) int {
 	}
 }
 
+func cmdPurge(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--older-than", "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("purge compatibility surface only; sqlite backend does not implement purge semantics yet")
+}
+
 func cmdRestore(args []string) int {
 	if len(args) == 0 {
 		return failUsage("usage: sq restore <issue-id> [--json]")
