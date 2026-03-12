@@ -217,8 +217,11 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, _, _ = runCLI(t, db, "types", "--json"); code != 0 {
 		t.Fatalf("types failed")
 	}
-	if code, _, _ = runCLI(t, db, "query", "status=open AND priority<=2", "--json"); code != 0 {
-		t.Fatalf("query failed")
+	if code, out, _ = runCLI(t, db, "query", "status=open AND priority<=2", "--json"); code != 0 || !strings.Contains(out, "\"id\"") {
+		t.Fatalf("query json failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "query", "status=open AND priority<=2"); code != 0 || !strings.Contains(out, "Found") {
+		t.Fatalf("query human failed code=%d out=%q", code, out)
 	}
 	if code, _, _ = runCLI(t, db, "search", "Task", "--json", "-n", "3"); code != 0 {
 		t.Fatalf("search failed")

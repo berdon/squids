@@ -113,10 +113,14 @@ func cmdQuery(args []string) int {
 	if len(args) == 0 {
 		return failUsage("query expression required")
 	}
+	useJSON := false
 	for _, a := range args {
 		if a == "--help" || a == "-h" {
 			printQueryHelp()
 			return 0
+		}
+		if a == "--json" {
+			useJSON = true
 		}
 	}
 	filtered := make([]string, 0, len(args))
@@ -142,7 +146,29 @@ func cmdQuery(args []string) int {
 	if err != nil {
 		return failUsage(err.Error())
 	}
-	return printJSON(items)
+	if useJSON {
+		return printJSON(items)
+	}
+
+	_, _ = fmt.Fprintf(os.Stdout, "Found %d issues:\n", len(items))
+	for _, it := range items {
+		statusIcon := "○"
+		statusBadge := "●"
+		if strings.EqualFold(it.Status, "closed") {
+			statusIcon = "✓"
+			statusBadge = "✓"
+		}
+		assignee := ""
+		if strings.TrimSpace(it.Assignee) != "" {
+			assignee = " @" + it.Assignee
+		}
+		issueType := it.IssueType
+		if issueType == "" {
+			issueType = "task"
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "%s %s [%s P%d] [%s]%s - %s\n", statusIcon, it.ID, statusBadge, it.Priority, issueType, assignee, it.Title)
+	}
+	return 0
 }
 
 func cmdRestore(args []string) int {
