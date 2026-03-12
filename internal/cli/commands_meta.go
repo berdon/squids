@@ -22,6 +22,15 @@ func printLabelHelp() {
 	fmt.Println("  --json   output JSON")
 }
 
+func hasJSONFlag(args []string) bool {
+	for _, a := range args {
+		if a == "--json" {
+			return true
+		}
+	}
+	return false
+}
+
 func cmdLabel(args []string) int {
 	if len(args) == 0 {
 		return failUsage("label subcommand required")
@@ -54,7 +63,11 @@ func cmdLabel(args []string) int {
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(t)
+		if hasJSONFlag(args[3:]) {
+			return printJSON(t)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "✓ Added label '%s' to %s\n", args[2], args[1])
+		return 0
 	case "remove":
 		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
 			fmt.Println("Usage:")
@@ -71,7 +84,11 @@ func cmdLabel(args []string) int {
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(t)
+		if hasJSONFlag(args[3:]) {
+			return printJSON(t)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "✓ Removed label '%s' from %s\n", args[2], args[1])
+		return 0
 	case "list":
 		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
 			fmt.Println("Usage:")
@@ -88,13 +105,43 @@ func cmdLabel(args []string) int {
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(labels)
+		if hasJSONFlag(args[2:]) {
+			return printJSON(labels)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "\n🏷 Labels for %s:\n", args[1])
+		if len(labels) == 0 {
+			_, _ = fmt.Fprintln(os.Stdout, "  (none)")
+		} else {
+			for _, l := range labels {
+				_, _ = fmt.Fprintf(os.Stdout, "  - %s\n", l)
+			}
+		}
+		_, _ = fmt.Fprintln(os.Stdout)
+		return 0
 	case "list-all":
 		labels, err := store.ListAllLabels(db)
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(labels)
+		if hasJSONFlag(args[1:]) {
+			return printJSON(labels)
+		}
+		tasks, err := store.ListTasks(db)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		counts := map[string]int{}
+		for _, t := range tasks {
+			for _, l := range t.Labels {
+				counts[l]++
+			}
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "\n🏷 All labels (%d unique):\n", len(labels))
+		for _, l := range labels {
+			_, _ = fmt.Fprintf(os.Stdout, "  %-16s (%d issues)\n", l, counts[l])
+		}
+		_, _ = fmt.Fprintln(os.Stdout)
+		return 0
 	default:
 		return failUsage("unknown label subcommand: " + sub)
 	}

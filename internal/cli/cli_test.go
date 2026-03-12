@@ -149,14 +149,26 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, _, _ = runCLI(t, db, "label", "add", aID, "triage", "--json"); code != 0 {
 		t.Fatalf("label add failed")
 	}
+	if code, out, _ = runCLI(t, db, "label", "add", aID, "human"); code != 0 || !strings.Contains(out, "Added label") {
+		t.Fatalf("label add human failed code=%d out=%q", code, out)
+	}
 	if code, _, _ = runCLI(t, db, "label", "list", aID, "--json"); code != 0 {
 		t.Fatalf("label list failed")
+	}
+	if code, out, _ = runCLI(t, db, "label", "list", aID); code != 0 || !strings.Contains(out, "Labels for") {
+		t.Fatalf("label list human failed code=%d out=%q", code, out)
 	}
 	if code, _, _ = runCLI(t, db, "label", "remove", aID, "triage", "--json"); code != 0 {
 		t.Fatalf("label remove failed")
 	}
+	if code, out, _ = runCLI(t, db, "label", "remove", aID, "human"); code != 0 || !strings.Contains(out, "Removed label") {
+		t.Fatalf("label remove human failed code=%d out=%q", code, out)
+	}
 	if code, _, _ = runCLI(t, db, "label", "list-all", "--json"); code != 0 {
 		t.Fatalf("label list-all failed")
+	}
+	if code, out, _ = runCLI(t, db, "label", "list-all"); code != 0 || !strings.Contains(out, "All labels") {
+		t.Fatalf("label list-all human failed code=%d out=%q", code, out)
 	}
 
 	if code, _, _ = runCLI(t, db, "dep", "add", aID, bID, "--json"); code != 0 {
