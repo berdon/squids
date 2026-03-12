@@ -119,6 +119,8 @@ func Run(args []string) int {
 		return cmdImportBeads(args[1:])
 	case "gitlab":
 		return cmdGitLab(args[1:])
+	case "memories":
+		return cmdMemories(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()

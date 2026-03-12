@@ -284,6 +284,11 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("gitlab", "--help")
 	mustFail("gitlab", "--wat")
 
+	mustFail("memories")
+	mustFail("memories", "--help")
+	mustFail("memories", "--json")
+	mustFail("memories", "--wat")
+
 	mustOK("hooks")
 	mustOK("hooks", "list")
 	mustOK("hooks", "list", "--json")

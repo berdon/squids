@@ -30,6 +30,25 @@ type importReport struct {
 	ElapsedMS int64          `json:"elapsed_ms"`
 }
 
+func cmdMemories(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("memories compatibility surface only; sq has no persistent memory store yet")
+}
+
 func cmdGitLab(args []string) int {
 	if len(args) == 0 {
 		_, _ = fmt.Fprintln(os.Stdout, "sq gitlab [projects|status|sync]")

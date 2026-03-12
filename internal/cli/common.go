@@ -92,6 +92,7 @@ func usage() {
 	fmt.Println("  onboard  Print AGENTS.md onboarding snippet")
 	fmt.Println("  import-beads Import tasks/deps/comments from a beads sqlite DB")
 	fmt.Println("  gitlab GitLab integration commands (compat surface)")
+	fmt.Println("  memories Persistent memory store commands (compat surface)")
 }
 
 func dbPathFromEnvOrCwd() (string, error) {
