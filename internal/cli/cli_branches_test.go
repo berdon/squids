@@ -92,8 +92,21 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("dep", "rm", id, id2, "--json")
 
 	mustFail("comments")
+	commentsHelp := mustOK("comments", "--help")
+	if !strings.Contains(commentsHelp, "sq comments [issue-id] [flags]") || !strings.Contains(commentsHelp, "--local-time") || !strings.Contains(commentsHelp, "Available Commands:") {
+		t.Fatalf("unexpected comments help: %q", commentsHelp)
+	}
 	mustFail("comments", "add", id)
+	commentsAddHelp := mustOK("comments", "add", "--help")
+	if !strings.Contains(commentsAddHelp, "sq comments add [issue-id] [text] [flags]") || !strings.Contains(commentsAddHelp, "--file string") {
+		t.Fatalf("unexpected comments add help: %q", commentsAddHelp)
+	}
 	mustOK("comments", "add", id, "hi", "--json")
+	commentsHuman := mustOK("comments", id)
+	if !strings.Contains(commentsHuman, "hi") || !strings.Contains(commentsHuman, "unknown") {
+		t.Fatalf("expected human comments output, got %q", commentsHuman)
+	}
+	mustOK("comments", id, "--local-time")
 	mustOK("comments", id, "--json")
 
 	mustFail("todo", "add")

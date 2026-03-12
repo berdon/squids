@@ -65,6 +65,9 @@ func cmdHelp(args []string) int {
 		case "children":
 			printChildrenHelp()
 			return 0
+		case "comments":
+			printCommentsHelp()
+			return 0
 		case "label":
 			printLabelHelp()
 			return 0

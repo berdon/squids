@@ -37,9 +37,10 @@ func cmdEdit(args []string) int {
 		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags
 		case "--actor", "--db", "--dolt-auto-commit":
-			if i+1 < len(args) {
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
 			}
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
@@ -56,9 +57,10 @@ func cmdDolt(args []string) int {
 		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags
 		case "--actor", "--db", "--dolt-auto-commit":
-			if i+1 < len(args) {
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
 			}
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
@@ -75,9 +77,10 @@ func cmdLinear(args []string) int {
 		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags
 		case "--actor", "--db", "--dolt-auto-commit":
-			if i+1 < len(args) {
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
 			}
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
@@ -94,9 +97,10 @@ func cmdMemories(args []string) int {
 		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags
 		case "--actor", "--db", "--dolt-auto-commit":
-			if i+1 < len(args) {
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
 			}
+			i++
 		default:
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)

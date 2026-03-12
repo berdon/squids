@@ -96,6 +96,11 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 		t.Fatalf("help children failed code=%d out=%q", code, out)
 	}
 
+	code, out, _ = runCLI(t, db, "help", "comments")
+	if code != 0 || !strings.Contains(out, "sq comments [issue-id] [flags]") || !strings.Contains(out, "--local-time") {
+		t.Fatalf("help comments failed code=%d out=%q", code, out)
+	}
+
 	code, out, _ = runCLI(t, db, "label", "--help")
 	if code != 0 || !strings.Contains(out, "sq label add") {
 		t.Fatalf("label --help failed code=%d out=%q", code, out)
@@ -231,6 +236,13 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 
 	if code, _, _ = runCLI(t, db, "comments", "add", aID, "hello", "--json"); code != 0 {
 		t.Fatalf("comments add failed")
+	}
+	commentFile := filepath.Join(t.TempDir(), "comment.txt")
+	if err := os.WriteFile(commentFile, []byte("from file"), 0o644); err != nil {
+		t.Fatalf("write comment file: %v", err)
+	}
+	if code, _, _ = runCLI(t, db, "comments", "add", aID, "-f", commentFile, "--author", "alice", "--json"); code != 0 {
+		t.Fatalf("comments add from file failed")
 	}
 	if code, _, _ = runCLI(t, db, "comments", aID, "--json"); code != 0 {
 		t.Fatalf("comments list failed")

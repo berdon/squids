@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/berdon/squids/internal/store"
 )
@@ -190,9 +191,77 @@ func cmdDep(args []string) int {
 	}
 }
 
+func printCommentsHelp() {
+	fmt.Println("View or manage comments on an issue.")
+	fmt.Println("")
+	fmt.Println("Examples:")
+	fmt.Println("  # List all comments on an issue")
+	fmt.Println("  sq comments bd-123")
+	fmt.Println("")
+	fmt.Println("  # List comments in JSON format")
+	fmt.Println("  sq comments bd-123 --json")
+	fmt.Println("")
+	fmt.Println("  # Add a comment")
+	fmt.Println("  sq comments add bd-123 \"This is a comment\"")
+	fmt.Println("")
+	fmt.Println("  # Add a comment from a file")
+	fmt.Println("  sq comments add bd-123 -f notes.txt")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq comments [issue-id] [flags]")
+	fmt.Println("  sq comments [command]")
+	fmt.Println("")
+	fmt.Println("Available Commands:")
+	fmt.Println("  add         Add a comment to an issue")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help         help for comments")
+	fmt.Println("      --local-time   Show timestamps in local time instead of UTC")
+	fmt.Println("")
+	printGlobalFlags()
+	fmt.Println("")
+	fmt.Println("Use \"sq comments [command] --help\" for more information about a command.")
+}
+
+func printCommentsAddHelp() {
+	fmt.Println("Add a comment to an issue.")
+	fmt.Println("")
+	fmt.Println("Examples:")
+	fmt.Println("  # Add a comment")
+	fmt.Println("  sq comments add bd-123 \"Working on this now\"")
+	fmt.Println("")
+	fmt.Println("  # Add a comment from a file")
+	fmt.Println("  sq comments add bd-123 -f notes.txt")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq comments add [issue-id] [text] [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -a, --author string   Add author to comment")
+	fmt.Println("  -f, --file string     Read comment text from file")
+	fmt.Println("  -h, --help            help for add")
+	fmt.Println("")
+	printGlobalFlags()
+}
+
+func formatCommentTime(createdAt string, local bool) string {
+	if !local {
+		return createdAt
+	}
+	t, err := time.Parse(time.RFC3339, createdAt)
+	if err != nil {
+		return createdAt
+	}
+	return t.Local().Format(time.RFC3339)
+}
+
 func cmdComments(args []string) int {
 	if len(args) == 0 {
-		return failUsage("usage: sq comments <issue-id> [--json] OR sq comments add <issue-id> <text> [--json]")
+		return failUsage("usage: sq comments <issue-id> [flags]")
+	}
+	if args[0] == "--help" || args[0] == "-h" {
+		printCommentsHelp()
+		return 0
 	}
 	db, _, err := openTaskDB()
 	if err != nil {
@@ -201,25 +270,110 @@ func cmdComments(args []string) int {
 	defer db.Close()
 
 	if args[0] == "add" {
-		if len(args) < 3 {
-			return failUsage("usage: sq comments add <issue-id> <text> [--json]")
-		}
-		issueID := args[1]
-		body := args[2]
+		jsonOut := false
+		issueID := ""
+		body := ""
+		bodyFile := ""
 		author := strings.TrimSpace(os.Getenv("BD_ACTOR"))
+		for i := 1; i < len(args); i++ {
+			a := args[i]
+			switch a {
+			case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+				if a == "--json" { jsonOut = true }
+			case "--help", "-h":
+				printCommentsAddHelp()
+				return 0
+			case "--author", "-a":
+				if i+1 >= len(args) { return failUsage("missing value for " + a) }
+				author = args[i+1]
+				i++
+			case "--file", "-f":
+				if i+1 >= len(args) { return failUsage("missing value for " + a) }
+				bodyFile = args[i+1]
+				i++
+			case "--actor", "--db", "--dolt-auto-commit":
+				if i+1 >= len(args) { return failUsage("missing value for " + a) }
+				i++
+			default:
+				if strings.HasPrefix(a, "-") { return failUsage("unknown flag: " + a) }
+				if issueID == "" {
+					issueID = a
+				} else if body == "" {
+					body = a
+				} else {
+					return failUsage("usage: sq comments add [issue-id] [text] [flags]")
+				}
+			}
+		}
+		if issueID == "" {
+			return failUsage("usage: sq comments add [issue-id] [text] [flags]")
+		}
+		if bodyFile != "" {
+			content, err := os.ReadFile(bodyFile)
+			if err != nil {
+				return failRuntime(err.Error())
+			}
+			body = string(content)
+		}
+		if strings.TrimSpace(body) == "" {
+			return failUsage("usage: sq comments add [issue-id] [text] [flags]")
+		}
 		c, err := store.AddComment(db, issueID, author, body)
 		if err != nil {
 			return failRuntime(err.Error())
 		}
-		return printJSON(c)
+		if jsonOut {
+			return printJSON(c)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Added comment %d to %s\n", c.ID, issueID)
+		return 0
 	}
 
-	issueID := args[0]
+	jsonOut := false
+	localTime := false
+	issueID := ""
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			if a == "--json" { jsonOut = true }
+		case "--local-time":
+			localTime = true
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 >= len(args) { return failUsage("missing value for " + a) }
+			i++
+		default:
+			if strings.HasPrefix(a, "-") { return failUsage("unknown flag: " + a) }
+			if issueID == "" {
+				issueID = a
+			} else {
+				return failUsage("usage: sq comments <issue-id> [flags]")
+			}
+		}
+	}
+	if issueID == "" {
+		return failUsage("usage: sq comments <issue-id> [flags]")
+	}
 	comments, err := store.ListComments(db, issueID)
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(comments)
+	if jsonOut {
+		return printJSON(comments)
+	}
+	if len(comments) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "No comments found")
+		return 0
+	}
+	for _, c := range comments {
+		author := c.Author
+		if strings.TrimSpace(author) == "" {
+			author = "unknown"
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "%d  %s  %s\n", c.ID, formatCommentTime(c.CreatedAt, localTime), author)
+		_, _ = fmt.Fprintf(os.Stdout, "    %s\n", c.Body)
+	}
+	return 0
 }
 
 func cmdTodo(args []string) int {
