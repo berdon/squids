@@ -683,10 +683,11 @@ func cmdCount(args []string) int {
 			_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
 			return 0
 		case "--status", "-s":
-			if i+1 < len(args) {
-				status = args[i+1]
-				i++
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
 			}
+			status = args[i+1]
+			i++
 		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
 		case "--actor", "--db", "--dolt-auto-commit":
@@ -1165,13 +1166,16 @@ func printQuickstartHelp() {
 }
 
 func cmdQuickstart(args []string) int {
+	jsonOut := false
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--help", "-h":
 			printQuickstartHelp()
 			return 0
-		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--json":
+			jsonOut = true
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 < len(args) {
@@ -1182,6 +1186,21 @@ func cmdQuickstart(args []string) int {
 				return failUsage("unknown flag: " + a)
 			}
 		}
+	}
+	if jsonOut {
+		return printJSON(map[string]any{
+			"command":      "quickstart",
+			"title":        "sq quickstart",
+			"summary":      "Display a quick start guide showing common sq workflows.",
+			"storage_path": ".sq/store.db",
+			"examples": []string{
+				`sq init`,
+				`sq create "Fix login bug"`,
+				`sq ready`,
+				`sq dep add bd-1 bd-2`,
+				`sq blocked`,
+			},
+		})
 	}
 	_, _ = fmt.Fprintln(os.Stdout, "")
 	_, _ = fmt.Fprintln(os.Stdout, "sq quickstart")
@@ -1207,8 +1226,8 @@ func cmdQuickstart(args []string) int {
 	_, _ = fmt.Fprintln(os.Stdout, "")
 	_, _ = fmt.Fprintln(os.Stdout, "MANAGING DEPENDENCIES")
 	_, _ = fmt.Fprintln(os.Stdout, "  sq dep add bd-1 bd-2     Add dependency (bd-2 blocks bd-1)")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq dep tree bd-1  Visualize dependency tree")
-	_, _ = fmt.Fprintln(os.Stdout, "  sq dep cycles      Detect circular dependencies")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq dep list bd-1         List direct dependencies for an issue")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq blocked               Show issues that are currently blocked")
 	_, _ = fmt.Fprintln(os.Stdout, "")
 	_, _ = fmt.Fprintln(os.Stdout, "DEPENDENCY TYPES")
 	_, _ = fmt.Fprintln(os.Stdout, "  blocks  Task B must complete before task A")
@@ -1234,7 +1253,7 @@ func cmdQuickstart(args []string) int {
 	_, _ = fmt.Fprintln(os.Stdout, "  sq automatically discovers your database:")
 	_, _ = fmt.Fprintln(os.Stdout, "    1. --db /path/to/db.db flag")
 	_, _ = fmt.Fprintln(os.Stdout, "    2. $SQ_DB_PATH environment variable")
-	_, _ = fmt.Fprintln(os.Stdout, "    3. .squids/*.db in current directory")
+	_, _ = fmt.Fprintln(os.Stdout, "    3. .sq/store.db or project-local .sq data in current directory")
 	_, _ = fmt.Fprintln(os.Stdout, "")
 	_, _ = fmt.Fprintln(os.Stdout, "AGENT INTEGRATION")
 	_, _ = fmt.Fprintln(os.Stdout, "  sq is designed for AI-supervised workflows:")

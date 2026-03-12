@@ -149,38 +149,120 @@ func cmdLabel(args []string) int {
 	}
 }
 
+func printDepAddHelp() {
+	fmt.Println("Add a dependency between two issues.")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq dep add <issue-id> <depends-on-id> [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help   help for add")
+	fmt.Println("      --json   Output in JSON format")
+}
+
+func printDepRemoveHelp() {
+	fmt.Println("Remove a dependency between two issues.")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq dep remove <issue-id> <depends-on-id> [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help   help for remove")
+	fmt.Println("      --json   Output in JSON format")
+}
+
+func printDepListHelp() {
+	fmt.Println("List dependencies for an issue.")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq dep list <issue-id> [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help   help for list")
+	fmt.Println("      --json   Output in JSON format")
+}
+
 func cmdDep(args []string) int {
 	if len(args) == 0 {
 		return failUsage("dep subcommand required")
 	}
 	sub := args[0]
-	db, _, err := openTaskDB()
-	if err != nil {
-		return failRuntime(err.Error())
-	}
-	defer db.Close()
 
 	switch sub {
 	case "add":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			printDepAddHelp()
+			return 0
+		}
 		if len(args) < 3 {
 			return failUsage("usage: sq dep add <issue-id> <depends-on-id> [--json]")
 		}
+		for _, a := range args[3:] {
+			if a == "--json" {
+				continue
+			}
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("dep add accepts exactly two positional arguments")
+		}
+		db, _, err := openTaskDB()
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		defer db.Close()
 		if err := store.AddDependency(db, args[1], args[2], "blocks"); err != nil {
 			return failRuntime(err.Error())
 		}
 		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "type": "blocks"})
 	case "remove", "rm":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			printDepRemoveHelp()
+			return 0
+		}
 		if len(args) < 3 {
 			return failUsage("usage: sq dep remove <issue-id> <depends-on-id> [--json]")
 		}
+		for _, a := range args[3:] {
+			if a == "--json" {
+				continue
+			}
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("dep remove accepts exactly two positional arguments")
+		}
+		db, _, err := openTaskDB()
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		defer db.Close()
 		if err := store.RemoveDependency(db, args[1], args[2]); err != nil {
 			return failRuntime(err.Error())
 		}
 		return printJSON(map[string]any{"issue_id": args[1], "depends_on_id": args[2], "removed": true})
 	case "list":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			printDepListHelp()
+			return 0
+		}
 		if len(args) < 2 {
 			return failUsage("usage: sq dep list <issue-id> [--json]")
 		}
+		for _, a := range args[2:] {
+			if a == "--json" {
+				continue
+			}
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("dep list accepts exactly one positional argument")
+		}
+		db, _, err := openTaskDB()
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		defer db.Close()
 		deps, err := store.ListDependencies(db, args[1])
 		if err != nil {
 			return failRuntime(err.Error())
