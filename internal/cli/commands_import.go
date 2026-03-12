@@ -30,6 +30,35 @@ type importReport struct {
 	ElapsedMS int64          `json:"elapsed_ms"`
 }
 
+func cmdGitLab(args []string) int {
+	if len(args) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "sq gitlab [projects|status|sync]")
+		return 0
+	}
+	sub := args[0]
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	switch sub {
+	case "projects", "status", "sync":
+		return failRuntime("gitlab integration not yet supported on sq sqlite backend")
+	default:
+		return failUsage("unknown gitlab subcommand: " + sub)
+	}
+}
+
 func cmdImportBeads(args []string) int {
 	opts, err := parseImportOptions(args)
 	if err != nil {

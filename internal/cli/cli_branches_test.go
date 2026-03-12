@@ -277,6 +277,13 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("swarm", "list", "--wat")
 	mustFail("swarm", "wat")
 
+	mustOK("gitlab")
+	mustFail("gitlab", "projects")
+	mustFail("gitlab", "status")
+	mustFail("gitlab", "sync")
+	mustFail("gitlab", "--help")
+	mustFail("gitlab", "--wat")
+
 	mustOK("hooks")
 	mustOK("hooks", "list")
 	mustOK("hooks", "list", "--json")

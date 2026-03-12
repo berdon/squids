@@ -117,6 +117,8 @@ func Run(args []string) int {
 		return cmdOnboard(args[1:])
 	case "import-beads":
 		return cmdImportBeads(args[1:])
+	case "gitlab":
+		return cmdGitLab(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		usage()
