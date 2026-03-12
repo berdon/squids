@@ -202,7 +202,18 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("search", "x", "--json", "--status", "open", "--sort", "id", "--reverse", "--long")
 	mustOK("search", "x", "-x", "--json")
 
-	mustOK("count", "--json")
+	countText := mustOK("count")
+	if strings.TrimSpace(countText) == "" || strings.Contains(countText, `"count"`) {
+		t.Fatalf("expected plain numeric count output, got %q", countText)
+	}
+	countJSON := mustOK("count", "--json")
+	if !strings.Contains(countJSON, `"count":`) {
+		t.Fatalf("expected json count output, got %q", countJSON)
+	}
+	countHelp := mustOK("count", "--help")
+	if !strings.Contains(countHelp, "Usage:") || !strings.Contains(countHelp, "Global Flags:") {
+		t.Fatalf("expected cobra-style count help, got %q", countHelp)
+	}
 	mustOK("count", "-s", "open", "--json")
 	statusJSON := mustOK("status", "--json")
 	if !strings.Contains(statusJSON, `"summary":`) || !strings.Contains(statusJSON, `"total_issues":`) || !strings.Contains(statusJSON, `"open":`) || !strings.Contains(statusJSON, `"in_progress":`) || !strings.Contains(statusJSON, `"closed":`) {

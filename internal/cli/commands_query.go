@@ -643,11 +643,47 @@ func cmdSearch(args []string) int {
 
 func cmdCount(args []string) int {
 	status := ""
+	jsonOut := false
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--status" || args[i] == "-s" {
+		a := args[i]
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--help", "-h":
+			_, _ = fmt.Fprintln(os.Stdout, "Count issues matching the specified filters.")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+			_, _ = fmt.Fprintln(os.Stdout, "  sq count [flags]")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help          help for count")
+			_, _ = fmt.Fprintln(os.Stdout, "  -s, --status string Filter by stored status")
+			_, _ = fmt.Fprintln(os.Stdout, "")
+			_, _ = fmt.Fprintln(os.Stdout, "Global Flags:")
+			_, _ = fmt.Fprintln(os.Stdout, "      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --db string                 Database path (default: auto-discover .sq/store.db)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --dolt-auto-commit string   Accepted compatibility flag (off|on|batch)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --json                      Output in JSON format")
+			_, _ = fmt.Fprintln(os.Stdout, "      --profile                   Generate CPU profile for performance analysis")
+			_, _ = fmt.Fprintln(os.Stdout, "  -q, --quiet                     Suppress non-essential output (errors only)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
+			_, _ = fmt.Fprintln(os.Stdout, "      --sandbox                   Sandbox mode: disables auto-sync")
+			_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
+			return 0
+		case "--status", "-s":
 			if i+1 < len(args) {
 				status = args[i+1]
 				i++
+			}
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
 			}
 		}
 	}
@@ -660,7 +696,14 @@ func cmdCount(args []string) int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(map[string]any{"count": n})
+	if jsonOut {
+		return printJSON(map[string]any{"count": n})
+	}
+	_, err = fmt.Fprintf(os.Stdout, "%d\n", n)
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	return 0
 }
 
 func cmdStatus(args []string) int {
