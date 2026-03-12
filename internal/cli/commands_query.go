@@ -1459,9 +1459,65 @@ func cmdOnboard(args []string) int {
 	return 0
 }
 
+func printCompletionHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Generate the autocompletion script for sq for the specified shell.")
+	_, _ = fmt.Fprintln(os.Stdout, "See each sub-command's help for details on how to use the generated script.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq completion [command]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Available Commands:")
+	_, _ = fmt.Fprintln(os.Stdout, "  bash        Generate the autocompletion script for bash")
+	_, _ = fmt.Fprintln(os.Stdout, "  fish        Generate the autocompletion script for fish")
+	_, _ = fmt.Fprintln(os.Stdout, "  powershell  Generate the autocompletion script for powershell")
+	_, _ = fmt.Fprintln(os.Stdout, "  zsh         Generate the autocompletion script for zsh")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for completion")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Use \"sq completion [command] --help\" for more information about a command.")
+}
+
+func printCompletionShellHelp(shell string) {
+	switch shell {
+	case "bash":
+		_, _ = fmt.Fprintln(os.Stdout, "Generate the autocompletion script for the bash shell.")
+		_, _ = fmt.Fprintln(os.Stdout, "")
+		_, _ = fmt.Fprintln(os.Stdout, "To load completions in your current shell session:")
+		_, _ = fmt.Fprintln(os.Stdout, "\tsource <(sq completion bash)")
+	case "zsh":
+		_, _ = fmt.Fprintln(os.Stdout, "Generate the autocompletion script for the zsh shell.")
+		_, _ = fmt.Fprintln(os.Stdout, "")
+		_, _ = fmt.Fprintln(os.Stdout, "To load completions in your current shell session:")
+		_, _ = fmt.Fprintln(os.Stdout, "\tsource <(sq completion zsh)")
+	case "fish":
+		_, _ = fmt.Fprintln(os.Stdout, "Generate the autocompletion script for the fish shell.")
+		_, _ = fmt.Fprintln(os.Stdout, "")
+		_, _ = fmt.Fprintln(os.Stdout, "To load completions in your current shell session:")
+		_, _ = fmt.Fprintln(os.Stdout, "\tsq completion fish | source")
+	case "powershell":
+		_, _ = fmt.Fprintln(os.Stdout, "Generate the autocompletion script for powershell.")
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	if shell == "zsh" {
+		_, _ = fmt.Fprintf(os.Stdout, "  sq completion %s [flags]\n", shell)
+	} else {
+		_, _ = fmt.Fprintf(os.Stdout, "  sq completion %s\n", shell)
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help              help for "+shell)
+	_, _ = fmt.Fprintln(os.Stdout, "      --no-descriptions   disable completion descriptions")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
+}
+
 func cmdCompletion(args []string) int {
 	if len(args) == 0 {
-		_, _ = fmt.Fprintln(os.Stdout, "sq completion [bash|zsh|fish|powershell]")
+		printCompletionHelp()
 		return 0
 	}
 	shell := ""
@@ -1477,7 +1533,7 @@ func cmdCompletion(args []string) int {
 			return failUsage("completion accepts one shell")
 		case "--help", "-h":
 			helpRequested = true
-		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--no-descriptions", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// compatibility flags accepted as no-op
 		case "--actor", "--db", "--dolt-auto-commit":
 			if i+1 < len(args) {
@@ -1492,10 +1548,14 @@ func cmdCompletion(args []string) int {
 	}
 	if shell == "" {
 		if helpRequested {
-			_, _ = fmt.Fprintln(os.Stdout, "Generate shell completion script: sq completion <bash|zsh|fish|powershell>")
+			printCompletionHelp()
 			return 0
 		}
 		return failUsage("usage: sq completion <bash|zsh|fish|powershell>")
+	}
+	if helpRequested {
+		printCompletionShellHelp(shell)
+		return 0
 	}
 	script := ""
 	switch shell {

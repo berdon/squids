@@ -381,8 +381,15 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustOK("onboard", "--actor", "tester", "--db", "/tmp/sq.db", "--dolt-auto-commit", "off")
 	mustFail("onboard", "--wat")
 
-	mustOK("completion")
+	completionHelp := mustOK("completion")
+	if !strings.Contains(completionHelp, "Available Commands:") || !strings.Contains(completionHelp, "bash") {
+		t.Fatalf("expected completion help output, got %q", completionHelp)
+	}
 	mustOK("completion", "bash")
+	bashHelp := mustOK("completion", "bash", "--help")
+	if !strings.Contains(bashHelp, "help for bash") || !strings.Contains(bashHelp, "--no-descriptions") {
+		t.Fatalf("expected bash completion help output, got %q", bashHelp)
+	}
 	mustOK("completion", "zsh")
 	mustOK("completion", "fish")
 	mustOK("completion", "powershell")
