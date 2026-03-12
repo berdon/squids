@@ -399,7 +399,24 @@ func cmdOrphans(args []string) int {
 	return printJSON(items)
 }
 
+func printSearchHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Search issues by title/description text.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq search <query> [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -n, --limit <n>  maximum results")
+	_, _ = fmt.Fprintln(os.Stdout, "  --json           output JSON")
+}
+
 func cmdSearch(args []string) int {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			printSearchHelp()
+			return 0
+		}
+	}
 	query := ""
 	limit := 50
 	if len(args) > 0 {

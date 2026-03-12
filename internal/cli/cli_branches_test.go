@@ -157,6 +157,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("orphans", "--wat")
 	mustOK("orphans", "--json")
 
+	mustOK("search", "--help")
 	mustOK("search", "x", "--query", "x", "--limit", "3", "--json")
 	mustOK("search", "x", "--json", "--status", "open", "--sort", "id", "--reverse", "--long")
 	mustOK("search", "x", "-x", "--json")
