@@ -24,7 +24,7 @@ func TestCommandRuntimeFailures(t *testing.T) {
 	withBadDBPath(t, func() {
 		checks := []func() int{
 			func() int { return cmdInit() },
-			func() int { return cmdReady() },
+			func() int { return cmdReady(nil) },
 			func() int { return cmdCreate([]string{"x", "--json"}) },
 			func() int { return cmdShow([]string{"bd-1", "--json"}) },
 			func() int { return cmdList([]string{"--json"}) },

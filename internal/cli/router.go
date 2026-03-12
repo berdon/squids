@@ -24,7 +24,7 @@ func Run(args []string) int {
 	case "init":
 		return cmdInit()
 	case "ready":
-		return cmdReady()
+		return cmdReady(args[1:])
 	case "create":
 		return cmdCreate(args[1:])
 	case "q":

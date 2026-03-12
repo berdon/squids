@@ -119,6 +119,14 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "Usage: sq show") {
 		t.Fatalf("show --help failed code=%d out=%q", code, out)
 	}
+	code, out, _ = runCLI(t, db, "help", "ready")
+	if code != 0 || !strings.Contains(out, "help for ready") || !strings.Contains(out, "--assignee") {
+		t.Fatalf("help ready failed code=%d out=%q", code, out)
+	}
+	code, out, _ = runCLI(t, db, "ready", "--help")
+	if code != 0 || !strings.Contains(out, "Usage:") || !strings.Contains(out, "--unassigned") {
+		t.Fatalf("ready --help failed code=%d out=%q", code, out)
+	}
 	code, out, _ = runCLI(t, db, "help", "gate")
 	if code != 0 || !strings.Contains(out, "sq gate list") {
 		t.Fatalf("help gate failed code=%d out=%q", code, out)
@@ -148,8 +156,8 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
 		t.Fatalf("init failed: %d", code)
 	}
-	if code, _, _ := runCLI(t, db, "ready", "--json"); code != 0 {
-		t.Fatalf("ready failed: %d", code)
+	if code, out, _ := runCLI(t, db, "ready", "--json"); code != 0 || strings.TrimSpace(out) != "[]" {
+		t.Fatalf("ready failed: code=%d out=%q", code, out)
 	}
 
 	code, out, _ := runCLI(t, db, "create", "Task A", "--type", "task", "--priority", "1", "--description", "desc", "--json")
@@ -169,6 +177,9 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 		t.Fatalf("create child failed: %d", code)
 	}
 	childID := firstID(t, out)
+	if code, _, _ = runCLI(t, db, "update", childID, "--assignee", "bob", "--add-label", "backend", "--set-metadata", "team=platform", "--json"); code != 0 {
+		t.Fatalf("update child failed")
+	}
 
 	if code, _, _ = runCLI(t, db, "show", aID, "--json"); code != 0 {
 		t.Fatalf("show failed")
@@ -234,6 +245,13 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	}
 	if code, _, _ = runCLI(t, db, "todo", "done", todoID, "--json"); code != 0 {
 		t.Fatalf("todo done failed")
+	}
+
+	if code, out, _ = runCLI(t, db, "ready", "--assignee", "bob", "--label", "backend", "--metadata-field", "team=platform", "--parent", aID, "--type", "task", "--priority", "2", "--limit", "1", "--json"); code != 0 || !strings.Contains(out, childID) || strings.Contains(out, "\"id\": \""+bID+"\"") {
+		t.Fatalf("ready filtered failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "ready", "--unassigned", "--json"); code != 0 || !strings.Contains(out, bID) || strings.Contains(out, childID) {
+		t.Fatalf("ready unassigned failed code=%d out=%q", code, out)
 	}
 
 	if code, out, _ = runCLI(t, db, "children", aID, "--json"); code != 0 || !strings.Contains(out, childID) {

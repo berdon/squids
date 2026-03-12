@@ -71,6 +71,9 @@ func cmdHelp(args []string) int {
 		case "query":
 			printQueryHelp()
 			return 0
+		case "ready":
+			printReadyHelp()
+			return 0
 		case "gate":
 			printGateHelp()
 			return 0

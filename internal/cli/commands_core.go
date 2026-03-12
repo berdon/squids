@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,144 @@ func cmdInit() int {
 	return printJSON(map[string]any{"command": "init", "ok": true, "db_path": dbPath, "schema_version": v})
 }
 
-func cmdReady() int {
+func printReadyHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Show ready work (open issues with no active blockers).")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq ready [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -a, --assignee string     Filter by assignee")
+	_, _ = fmt.Fprintln(os.Stdout, "      --gated               Accepted for bd parity (no-op)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --has-metadata-key    Filter issues that have this metadata key set")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help               help for ready")
+	_, _ = fmt.Fprintln(os.Stdout, "      --include-deferred    Accepted for bd parity (no-op)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --include-ephemeral   Accepted for bd parity (no-op)")
+	_, _ = fmt.Fprintln(os.Stdout, "  -l, --label strings      Filter by labels (AND: must have ALL)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --label-any strings   Filter by labels (OR: must have AT LEAST ONE)")
+	_, _ = fmt.Fprintln(os.Stdout, "  -n, --limit int          Maximum issues to show")
+	_, _ = fmt.Fprintln(os.Stdout, "      --metadata-field      Filter by metadata field (key=value, repeatable)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --mol string          Accepted for bd parity (no-op)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --mol-type string     Accepted for bd parity (no-op)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --parent string       Filter to descendants of this parent issue")
+	_, _ = fmt.Fprintln(os.Stdout, "      --plain               Accepted for bd parity (JSON output retained)")
+	_, _ = fmt.Fprintln(os.Stdout, "      --pretty              Accepted for bd parity (JSON output retained)")
+	_, _ = fmt.Fprintln(os.Stdout, "  -p, --priority int       Filter by priority")
+	_, _ = fmt.Fprintln(os.Stdout, "      --rig string          Accepted for bd parity (no-op)")
+	_, _ = fmt.Fprintln(os.Stdout, "  -s, --sort string        Sort policy: priority (default), oldest")
+	_, _ = fmt.Fprintln(os.Stdout, "  -t, --type string        Filter by issue type")
+	_, _ = fmt.Fprintln(os.Stdout, "  -u, --unassigned         Show only unassigned issues")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
+}
+
+func cmdReady(args []string) int {
+	var (
+		assignee       *string
+		hasMetadataKey string
+		labelsAll      []string
+		labelsAny      []string
+		limit          int
+		metadataFields []string
+		parent         string
+		priority       *int
+		sortBy         = "priority"
+		typeFilter     string
+		unassigned     bool
+	)
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h":
+			printReadyHelp()
+			return 0
+		case "--json", "--gated", "--include-deferred", "--include-ephemeral", "--plain", "--pretty", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit", "--mol", "--mol-type", "--rig":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			i++
+		case "--assignee", "-a":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			v := args[i+1]
+			assignee = &v
+			i++
+		case "--has-metadata-key":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			hasMetadataKey = args[i+1]
+			i++
+		case "--label", "-l":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			labelsAll = append(labelsAll, splitCSV(args[i+1])...)
+			i++
+		case "--label-any":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			labelsAny = append(labelsAny, splitCSV(args[i+1])...)
+			i++
+		case "--limit", "-n":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			v, err := strconv.Atoi(args[i+1])
+			if err != nil || v < 0 {
+				return failUsage("invalid --limit")
+			}
+			limit = v
+			i++
+		case "--metadata-field":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			metadataFields = append(metadataFields, args[i+1])
+			i++
+		case "--parent":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			parent = args[i+1]
+			i++
+		case "--priority", "-p":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			v, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				return failUsage("invalid --priority")
+			}
+			priority = &v
+			i++
+		case "--sort", "-s":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			sortBy = args[i+1]
+			i++
+		case "--type", "-t":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			typeFilter = args[i+1]
+			i++
+		case "--unassigned", "-u":
+			unassigned = true
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("ready does not accept positional arguments")
+		}
+	}
+
 	db, _, err := openTaskDB()
 	if err != nil {
 		return failRuntime(err.Error())
@@ -39,7 +177,127 @@ func cmdReady() int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	return printJSON(items)
+
+	filtered := make([]store.Task, 0, len(items))
+	for _, t := range items {
+		if assignee != nil && t.Assignee != *assignee {
+			continue
+		}
+		if unassigned && strings.TrimSpace(t.Assignee) != "" {
+			continue
+		}
+		if priority != nil && t.Priority != *priority {
+			continue
+		}
+		if typeFilter != "" && t.IssueType != typeFilter {
+			continue
+		}
+		if parent != "" && !containsString(t.Deps, parent) {
+			continue
+		}
+		if hasMetadataKey != "" {
+			if _, ok := t.Metadata[hasMetadataKey]; !ok {
+				continue
+			}
+		}
+		if !matchesAllLabels(t.Labels, labelsAll) || !matchesAnyLabel(t.Labels, labelsAny) {
+			continue
+		}
+		if !matchesMetadataFields(t.Metadata, metadataFields) {
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+
+	sortReadyTasks(filtered, sortBy)
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+	return printJSON(filtered)
+}
+
+func splitCSV(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func containsString(items []string, target string) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesAllLabels(taskLabels, required []string) bool {
+	if len(required) == 0 {
+		return true
+	}
+	set := map[string]struct{}{}
+	for _, label := range taskLabels {
+		set[label] = struct{}{}
+	}
+	for _, label := range required {
+		if _, ok := set[label]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func matchesAnyLabel(taskLabels, allowed []string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	set := map[string]struct{}{}
+	for _, label := range taskLabels {
+		set[label] = struct{}{}
+	}
+	for _, label := range allowed {
+		if _, ok := set[label]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesMetadataFields(metadata map[string]string, fields []string) bool {
+	for _, field := range fields {
+		parts := strings.SplitN(field, "=", 2)
+		if len(parts) != 2 {
+			return false
+		}
+		if metadata[parts[0]] != parts[1] {
+			return false
+		}
+	}
+	return true
+}
+
+func sortReadyTasks(tasks []store.Task, sortBy string) {
+	switch sortBy {
+	case "priority", "", "hybrid":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			if tasks[i].Priority != tasks[j].Priority {
+				return tasks[i].Priority < tasks[j].Priority
+			}
+			return tasks[i].CreatedAt < tasks[j].CreatedAt
+		})
+	case "oldest":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			return tasks[i].CreatedAt < tasks[j].CreatedAt
+		})
+	default:
+		// preserve store order for unknown values to keep compatibility forgiving
+	}
 }
 
 func cmdCreate(args []string) int {
