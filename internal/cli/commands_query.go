@@ -16,9 +16,15 @@ var Version = "dev"
 
 func cmdHelp(args []string) int {
 	all := false
-	if len(args) >= 2 && args[0] == "gate" && args[1] == "list" {
-		printGateListHelp()
-		return 0
+	if len(args) >= 2 && args[0] == "gate" {
+		switch args[1] {
+		case "list":
+			printGateListHelp()
+			return 0
+		case "show":
+			printGateShowHelp()
+			return 0
+		}
 	}
 	target := ""
 	for i := 0; i < len(args); i++ {
@@ -258,6 +264,16 @@ func printGateListHelp() {
 	_, _ = fmt.Fprintln(os.Stdout, "      --json   output JSON")
 }
 
+func printGateShowHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Show a single gate issue.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq gate show <id> [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json   output JSON")
+}
+
 func cmdGate(args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
 		printGateHelp()
@@ -322,8 +338,26 @@ func cmdGate(args []string) int {
 		}
 		return 0
 	case "show":
+		if len(args) >= 2 && (args[1] == "--help" || args[1] == "-h") {
+			printGateShowHelp()
+			return 0
+		}
 		if len(args) < 2 {
 			return failUsage("usage: sq gate show <id> [--json]")
+		}
+		for _, a := range args[2:] {
+			switch a {
+			case "--json":
+				// handled globally
+			case "--help", "-h":
+				printGateShowHelp()
+				return 0
+			default:
+				if strings.HasPrefix(a, "-") {
+					return failUsage("unknown flag: " + a)
+				}
+				return failUsage("gate show accepts exactly one positional argument")
+			}
 		}
 		g, err := store.ShowTask(db, args[1])
 		if err != nil {
