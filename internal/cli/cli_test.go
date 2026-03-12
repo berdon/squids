@@ -105,6 +105,10 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "sq gate list") {
 		t.Fatalf("help gate failed code=%d out=%q", code, out)
 	}
+	code, out, _ = runCLI(t, db, "help", "backup")
+	if code != 0 || !strings.Contains(out, "sq backup") {
+		t.Fatalf("help backup failed code=%d out=%q", code, out)
+	}
 	code, out, _ = runCLI(t, db, "gate", "--help")
 	if code != 0 || !strings.Contains(out, "Usage:") {
 		t.Fatalf("gate --help failed code=%d out=%q", code, out)
@@ -274,6 +278,23 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 	if code, out, _ = runCLI(t, db, "gate", "list", "--all", "--json"); code != 0 || !strings.Contains(out, gateID) {
 		t.Fatalf("gate list --all json failed code=%d out=%q", code, out)
 	}
+	if code, out, _ = runCLI(t, db, "backup", "--json"); code != 0 || !strings.Contains(out, "backup_path") {
+		t.Fatalf("backup export failed code=%d out=%q", code, out)
+	}
+	var backupPayload map[string]any
+	if err := json.Unmarshal([]byte(out), &backupPayload); err != nil {
+		t.Fatalf("backup json decode failed: %v", err)
+	}
+	backupPath, _ := backupPayload["backup_path"].(string)
+	if backupPath == "" {
+		t.Fatalf("missing backup_path in payload=%q", out)
+	}
+	if code, out, _ = runCLI(t, db, "backup", "status", "--json"); code != 0 || !strings.Contains(out, "latest_backup") {
+		t.Fatalf("backup status failed code=%d out=%q", code, out)
+	}
+	if code, out, _ = runCLI(t, db, "backup", "restore", backupPath, "--json"); code != 0 || !strings.Contains(out, "restored_from") {
+		t.Fatalf("backup restore failed code=%d out=%q", code, out)
+	}
 	if code, _, _ = runCLI(t, db, "status", "--json"); code != 0 {
 		t.Fatalf("status failed")
 	}
@@ -314,6 +335,7 @@ func TestRun_ErrorFlagsAndValidation(t *testing.T) {
 		{"gate", "wat"},
 		{"gate", "show"},
 		{"gate", "resolve"},
+		{"backup", "wat"},
 	}
 	for _, c := range cases {
 		code, _, _ := runCLI(t, db, c...)
@@ -325,6 +347,55 @@ func TestRun_ErrorFlagsAndValidation(t *testing.T) {
 	code, _, _ := runCLI(t, db, "query", "madeupfield=1", "--json")
 	if code == 0 {
 		t.Fatalf("expected bad query to fail")
+	}
+}
+
+func TestRun_BackupCommandBranches(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
+		t.Fatalf("init failed")
+	}
+	if code, out, _ := runCLI(t, db, "backup", "status"); code != 0 || !strings.Contains(out, "No backups found") {
+		t.Fatalf("backup status human failed code=%d out=%q", code, out)
+	}
+	code, out, _ := runCLI(t, db, "backup", "--json")
+	if code != 0 || !strings.Contains(out, "backup_path") {
+		t.Fatalf("backup default export failed code=%d out=%q", code, out)
+	}
+	var backupPayload map[string]any
+	if err := json.Unmarshal([]byte(out), &backupPayload); err != nil {
+		t.Fatalf("decode backup payload failed: %v", err)
+	}
+	backupPath, _ := backupPayload["backup_path"].(string)
+	if backupPath == "" {
+		t.Fatalf("missing backup_path in payload: %q", out)
+	}
+	if code, out, _ := runCLI(t, db, "backup"); code != 0 || !strings.Contains(out, "Backup created") {
+		t.Fatalf("backup human export failed code=%d out=%q", code, out)
+	}
+	if code, out, _ := runCLI(t, db, "backup", "status", "--json"); code != 0 || !strings.Contains(out, "latest_backup") {
+		t.Fatalf("backup status json failed code=%d out=%q", code, out)
+	}
+	if code, out, _ := runCLI(t, db, "backup", "status"); code != 0 || !strings.Contains(out, "Latest backup") {
+		t.Fatalf("backup status human failed code=%d out=%q", code, out)
+	}
+	if code, out, _ := runCLI(t, db, "backup", "restore", backupPath, "--json"); code != 0 || !strings.Contains(out, "restored_from") {
+		t.Fatalf("backup restore explicit failed code=%d out=%q", code, out)
+	}
+	if code, out, _ := runCLI(t, db, "backup", "restore", "--json"); code != 0 || !strings.Contains(out, "restored_from") {
+		t.Fatalf("backup restore latest failed code=%d out=%q", code, out)
+	}
+	if code, _, errOut := runCLI(t, db, "backup", "restore", "/definitely/missing.sqlite"); code == 0 || !strings.Contains(strings.ToLower(errOut), "failed") {
+		t.Fatalf("expected restore bad path error, code=%d err=%q", code, errOut)
+	}
+	if code, _, errOut := runCLI(t, db, "backup", "init", "/tmp/foo"); code == 0 || !strings.Contains(errOut, "unsupported") {
+		t.Fatalf("expected backup init unsupported code=%d err=%q", code, errOut)
+	}
+	if code, _, errOut := runCLI(t, db, "backup", "sync"); code == 0 || !strings.Contains(errOut, "unsupported") {
+		t.Fatalf("expected backup sync unsupported code=%d err=%q", code, errOut)
+	}
+	if code, out, _ := runCLI(t, db, "backup", "--help"); code != 0 || !strings.Contains(out, "sq backup") {
+		t.Fatalf("backup --help failed code=%d out=%q", code, out)
 	}
 }
 

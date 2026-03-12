@@ -2,10 +2,12 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/berdon/squids/internal/store"
 )
@@ -60,6 +62,10 @@ func cmdHelp(args []string) int {
 		}
 		if target == "gate" {
 			printGateHelp()
+			return 0
+		}
+		if target == "backup" {
+			printBackupHelp()
 			return 0
 		}
 		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
@@ -323,6 +329,148 @@ func cmdPurge(args []string) int {
 		}
 	}
 	return failRuntime("purge compatibility surface only; sqlite backend does not implement purge semantics yet")
+}
+
+func printBackupHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Back up sq sqlite database for recovery (compat surface).")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq backup [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq backup status [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq backup restore [path] [--json]")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq backup init <path>")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq backup sync")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  --json   output JSON")
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
+}
+
+func cmdBackup(args []string) int {
+	if len(args) == 0 {
+		args = []string{"export"}
+	}
+	if args[0] == "--help" || args[0] == "-h" {
+		printBackupHelp()
+		return 0
+	}
+	useJSON := false
+	for _, a := range args {
+		if a == "--json" {
+			useJSON = true
+		}
+	}
+
+	dbPath, err := dbPathFromEnvOrCwd()
+	if err != nil {
+		return failRuntime(err.Error())
+	}
+	backupDir := filepath.Join(filepath.Dir(dbPath), "backup")
+
+	sub := "export"
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		sub = args[0]
+	}
+	switch sub {
+	case "export":
+		ts := time.Now().UTC().Format("20060102-150405")
+		dst := filepath.Join(backupDir, fmt.Sprintf("tasks-%s.sqlite", ts))
+		if err := copyFile(dbPath, dst); err != nil {
+			return failRuntime(fmt.Sprintf("backup export failed: %v", err))
+		}
+		payload := map[string]any{"backup_path": dst, "source": dbPath, "created_at": time.Now().UTC().Format(time.RFC3339)}
+		if useJSON {
+			return printJSON(payload)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Backup created: %s\n", dst)
+		return 0
+	case "status":
+		entries, err := os.ReadDir(backupDir)
+		if err != nil && !os.IsNotExist(err) {
+			return failRuntime(err.Error())
+		}
+		latest := ""
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if strings.HasSuffix(name, ".sqlite") && (latest == "" || name > latest) {
+				latest = name
+			}
+		}
+		payload := map[string]any{"backup_dir": backupDir, "latest_backup": latest, "exists": latest != ""}
+		if useJSON {
+			return printJSON(payload)
+		}
+		if latest == "" {
+			_, _ = fmt.Fprintf(os.Stdout, "No backups found in %s\n", backupDir)
+		} else {
+			_, _ = fmt.Fprintf(os.Stdout, "Latest backup: %s\n", filepath.Join(backupDir, latest))
+		}
+		return 0
+	case "restore":
+		src := ""
+		for _, a := range args[1:] {
+			if strings.HasPrefix(a, "-") {
+				continue
+			}
+			src = a
+			break
+		}
+		if src == "" {
+			entries, err := os.ReadDir(backupDir)
+			if err != nil {
+				return failRuntime("usage: sq backup restore [path] [--json]")
+			}
+			latest := ""
+			for _, e := range entries {
+				if e.IsDir() {
+					continue
+				}
+				name := e.Name()
+				if strings.HasSuffix(name, ".sqlite") && (latest == "" || name > latest) {
+					latest = name
+				}
+			}
+			if latest == "" {
+				return failRuntime("no backup file found to restore")
+			}
+			src = filepath.Join(backupDir, latest)
+		}
+		if err := copyFile(src, dbPath); err != nil {
+			return failRuntime(fmt.Sprintf("backup restore failed: %v", err))
+		}
+		payload := map[string]any{"restored_from": src, "db_path": dbPath}
+		if useJSON {
+			return printJSON(payload)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "Restored database from %s\n", src)
+		return 0
+	case "init", "sync":
+		return failRuntime("backup init/sync require Dolt remote features; unsupported on sq sqlite backend")
+	default:
+		return failUsage("unknown backup subcommand: " + sub)
+	}
 }
 
 func cmdRestore(args []string) int {

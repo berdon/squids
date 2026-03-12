@@ -79,6 +79,8 @@ func Run(args []string) int {
 		return cmdSearch(args[1:])
 	case "gate":
 		return cmdGate(args[1:])
+	case "backup":
+		return cmdBackup(args[1:])
 	case "purge":
 		return cmdPurge(args[1:])
 	case "restore":
