@@ -121,6 +121,7 @@ func TestCLI_CommandBranchCoverage(t *testing.T) {
 	mustFail("undefer", id, "--wat")
 	mustOK("undefer", id, "--json")
 
+	mustOK("rename", "--help")
 	mustFail("rename")
 	mustFail("rename", id)
 	mustFail("rename", id, "new", "--wat")

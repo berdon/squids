@@ -455,6 +455,13 @@ func cmdSetState(args []string) int {
 }
 
 func cmdRename(args []string) int {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			_, _ = fmt.Fprintln(os.Stdout, "Rename issue IDs while preserving relationships.")
+			_, _ = fmt.Fprintln(os.Stdout, "Usage: sq rename <old-id> <new-id> [--json]")
+			return 0
+		}
+	}
 	if len(args) < 2 {
 		return failUsage("usage: sq rename <old-id> <new-id> [--json]")
 	}
