@@ -78,6 +78,7 @@ func usage() {
 	fmt.Println("  human   Human-focused command group")
 	fmt.Println("  quickstart Show quick start guide")
 	fmt.Println("  history  Show issue history (not supported on sq sqlite backend)")
+	fmt.Println("  swarm    Swarm management commands (compat surface)")
 	fmt.Println("  hooks    Manage git hooks (compat surface)")
 	fmt.Println("  completion Generate shell completion scripts")
 	fmt.Println("  onboard  Print AGENTS.md onboarding snippet")
