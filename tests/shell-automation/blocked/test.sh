@@ -9,9 +9,6 @@ if [[ ! -x "$SQ_BIN" ]]; then
   (cd "$ROOT_DIR" && go build -o bin/sq ./cmd/sq)
 fi
 
-TMP_DIR="$(mktemp -d -t sq-blocked-XXXXXX)"
-trap 'rm -rf "$TMP_DIR"' EXIT
-
 fail() {
   echo "[blocked] FAIL: $*" >&2
   exit 1
@@ -45,9 +42,9 @@ assert_not_contains() {
 }
 
 json_eval() {
-  local json_input="$1"
+  local payload="$1"
   local expr="$2"
-  JSON_INPUT="$json_input" "$PYTHON" - "$expr" <<'PY'
+  JSON_INPUT="$payload" "$PYTHON" - "$expr" <<'PY'
 import json, os, sys
 obj = json.loads(os.environ["JSON_INPUT"])
 expr = sys.argv[1]
@@ -64,8 +61,8 @@ PY
 }
 
 json_id() {
-  local json_input="$1"
-  JSON_INPUT="$json_input" "$PYTHON" <<'PY'
+  local payload="$1"
+  JSON_INPUT="$payload" "$PYTHON" <<'PY'
 import json, os
 print(json.loads(os.environ["JSON_INPUT"])["id"])
 PY
@@ -84,6 +81,9 @@ run_capture() {
   RUN_ERR="$(<"$err_file")"
 }
 
+TMP_DIR="$(mktemp -d -t sq-blocked-XXXXXX)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
 WORKSPACE="$TMP_DIR/workspace"
 mkdir -p "$WORKSPACE"
 cd "$WORKSPACE"
@@ -95,22 +95,24 @@ echo "[blocked] binary=$SQ_BIN"
 run_capture init "$SQ_BIN" init --json
 assert_eq "$RUN_CODE" "0" "sq init"
 
-
 run_capture help_cmd "$SQ_BIN" help blocked
 assert_eq "$RUN_CODE" "0" "sq help blocked"
 assert_contains "$RUN_OUT" "Show blocked issues" "help command description"
 assert_contains "$RUN_OUT" "sq blocked [flags]" "help command usage"
 assert_contains "$RUN_OUT" "--parent string" "help command parent flag"
+HELP_CMD_OUT="$RUN_OUT"
 
 run_capture help_flag "$SQ_BIN" blocked --help
 assert_eq "$RUN_CODE" "0" "sq blocked --help"
 assert_contains "$RUN_OUT" "Show blocked issues" "help flag description"
 assert_contains "$RUN_OUT" "sq blocked [flags]" "help flag usage"
 assert_contains "$RUN_OUT" "--parent string" "help flag parent flag"
+assert_eq "$RUN_OUT" "$HELP_CMD_OUT" "help command and --help parity"
 
 run_capture empty_default "$SQ_BIN" blocked
 assert_eq "$RUN_CODE" "0" "blocked empty default"
 assert_contains "$RUN_OUT" "No blocked issues found" "empty default output"
+assert_not_contains "$RUN_OUT" '"id"' "empty default should be human readable"
 
 run_capture empty_json "$SQ_BIN" blocked --json
 assert_eq "$RUN_CODE" "0" "blocked empty json"
@@ -161,6 +163,7 @@ assert_eq "$(json_eval "$RUN_OUT" 'len([item for item in obj if item["blocked_by
 assert_contains "$RUN_OUT" "$CHILD_ID" "json child id"
 assert_contains "$RUN_OUT" "$GRANDCHILD_ID" "json grandchild id"
 assert_contains "$RUN_OUT" "$OTHER_ID" "json other id"
+BASE_JSON="$RUN_OUT"
 
 run_capture parent_filter "$SQ_BIN" blocked --parent "$PARENT_ID" --json
 assert_eq "$RUN_CODE" "0" "blocked parent filter"
@@ -168,6 +171,38 @@ assert_eq "$(json_eval "$RUN_OUT" 'len(obj)')" "2" "parent filter count"
 assert_contains "$RUN_OUT" "$CHILD_ID" "parent filter child"
 assert_contains "$RUN_OUT" "$GRANDCHILD_ID" "parent filter grandchild"
 assert_not_contains "$RUN_OUT" "$OTHER_ID" "parent filter excludes non-descendant"
+
+run_capture actor_json "$SQ_BIN" blocked --json --actor tester
+assert_eq "$RUN_CODE" "0" "blocked --actor --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "actor should not change blocked summary"
+
+run_capture readonly_json "$SQ_BIN" blocked --json --readonly
+assert_eq "$RUN_CODE" "0" "blocked --readonly --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "readonly should not change blocked summary"
+
+run_capture sandbox_json "$SQ_BIN" blocked --json --sandbox
+assert_eq "$RUN_CODE" "0" "blocked --sandbox --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "sandbox should not change blocked summary"
+
+run_capture profile_json "$SQ_BIN" blocked --json --profile
+assert_eq "$RUN_CODE" "0" "blocked --profile --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "profile should not change blocked summary"
+
+run_capture quiet_json "$SQ_BIN" blocked --json --quiet
+assert_eq "$RUN_CODE" "0" "blocked --quiet --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "quiet should not change blocked summary"
+
+run_capture verbose_json "$SQ_BIN" blocked --json --verbose
+assert_eq "$RUN_CODE" "0" "blocked --verbose --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "verbose should not change blocked summary"
+
+run_capture dolt_json "$SQ_BIN" blocked --json --dolt-auto-commit off
+assert_eq "$RUN_CODE" "0" "blocked --dolt-auto-commit --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "dolt-auto-commit should not change blocked summary"
+
+run_capture db_json "$SQ_BIN" blocked --json --db "$SQ_DB_PATH"
+assert_eq "$RUN_CODE" "0" "blocked --db --json"
+assert_eq "$RUN_OUT" "$BASE_JSON" "db flag should not change blocked summary"
 
 run_capture bad_flag "$SQ_BIN" blocked --wat
 assert_eq "$RUN_CODE" "2" "blocked unknown flag"
