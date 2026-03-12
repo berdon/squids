@@ -101,9 +101,11 @@ run_cmd "$SQ_BIN" dep add --json
 assert_eq "2" "$RUN_CODE" "sq dep add --json without ids should fail with usage"
 assert_contains "$RUN_STDERR" "usage: sq dep add <issue-id> <depends-on-id> [--json]" "sq dep add --json usage"
 
+before_help_count="$("$SQ_BIN" count --json)"
 run_cmd "$SQ_BIN" dep add --help
-assert_eq "2" "$RUN_CODE" "sq dep add --help currently returns usage"
-assert_contains "$RUN_STDERR" "usage: sq dep add <issue-id> <depends-on-id> [--json]" "sq dep add --help usage"
+assert_eq "0" "$RUN_CODE" "sq dep add --help should succeed"
+assert_contains "$RUN_STDOUT" "dep add" "sq dep add --help output"
+assert_eq "$before_help_count" "$("$SQ_BIN" count --json)" "sq dep add --help should not mutate state"
 
 run_cmd "$SQ_BIN" init --json
 assert_eq "0" "$RUN_CODE" "sq init should succeed"
@@ -152,5 +154,11 @@ assert_eq "1" "$RUN_CODE" "dep add with missing issue should fail"
 assert_contains "$RUN_STDERR" "issue not found: bd-missing" "missing issue error"
 run_cmd "$SQ_BIN" count --json
 assert_eq "2" "$(json_get_field "$RUN_STDOUT" count)" "failed dep add should not create extra tasks"
+
+run_cmd "$SQ_BIN" dep add "$issue_a" "$issue_b" --wat
+assert_eq "2" "$RUN_CODE" "dep add with unknown trailing flag should fail"
+assert_contains "$RUN_STDERR" "unknown flag" "unknown trailing flag error"
+run_cmd "$SQ_BIN" dep list "$issue_a" --json
+assert_eq "1" "$(json_list_len "$RUN_STDOUT")" "unknown flag should not partially mutate dependencies"
 
 echo "dep add shell automation passed"

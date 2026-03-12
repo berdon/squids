@@ -186,8 +186,8 @@ assert_eq "2" "$RUN_CODE" "count unknown flag should fail"
 assert_contains "$RUN_STDERR" "unknown flag" "count unknown flag error"
 
 run_cmd "$SQ_BIN" count --status
-assert_eq "0" "$RUN_CODE" "count missing --status value current behavior"
-assert_eq "4" "$(printf '%s' "$RUN_STDOUT" | tr -d '\n\r')" "count missing --status current result"
+assert_eq "2" "$RUN_CODE" "count missing --status value should fail"
+assert_contains "$RUN_STDERR" "missing value" "count missing --status error"
 
 empty_workspace="$(mktemp -d)"
 export SQ_DB_PATH="$empty_workspace/tasks.sqlite"
