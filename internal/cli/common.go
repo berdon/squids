@@ -79,6 +79,7 @@ func usage() {
 	fmt.Println("  info    Show database information")
 	fmt.Println("  human   Human-focused command group")
 	fmt.Println("  quickstart Show quick start guide")
+	fmt.Println("  mail     Mail provider delegation (compat surface)")
 	fmt.Println("  setup    Setup editor/assistant integration files (compat surface)")
 	fmt.Println("  history  Show issue history (not supported on sq sqlite backend)")
 	fmt.Println("  audit    Audit interaction log commands (compat surface)")
