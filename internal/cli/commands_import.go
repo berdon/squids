@@ -30,6 +30,25 @@ type importReport struct {
 	ElapsedMS int64          `json:"elapsed_ms"`
 }
 
+func cmdDolt(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h", "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags
+		case "--actor", "--db", "--dolt-auto-commit":
+			if i+1 < len(args) {
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+		}
+	}
+	return failRuntime("dolt integration not yet supported on sq sqlite backend")
+}
+
 func cmdLinear(args []string) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
