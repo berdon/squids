@@ -83,8 +83,20 @@ func cmdHelp(args []string) int {
 		case "backup":
 			printBackupHelp()
 			return 0
+		case "blocked":
+			printBlockedHelp()
+			return 0
+		case "import-beads":
+			printImportBeadsHelp()
+			return 0
 		case "quickstart":
 			printQuickstartHelp()
+			return 0
+		case "types":
+			printTypesHelp()
+			return 0
+		case "version":
+			printVersionHelp()
 			return 0
 		}
 		_, _ = fmt.Fprintf(os.Stdout, "Help for command: %s\n", target)
@@ -821,6 +833,18 @@ func cmdStatus(args []string) int {
 	return 0
 }
 
+func printVersionHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Print version information")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq version [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for version")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
+}
+
 func cmdVersion(args []string) int {
 	jsonOut := false
 	for i := 0; i < len(args); i++ {
@@ -829,24 +853,7 @@ func cmdVersion(args []string) int {
 		case "--json":
 			jsonOut = true
 		case "--help", "-h":
-			_, _ = fmt.Fprintln(os.Stdout, "Print version information")
-			_, _ = fmt.Fprintln(os.Stdout, "")
-			_, _ = fmt.Fprintln(os.Stdout, "Usage:")
-			_, _ = fmt.Fprintln(os.Stdout, "  sq version [flags]")
-			_, _ = fmt.Fprintln(os.Stdout, "")
-			_, _ = fmt.Fprintln(os.Stdout, "Flags:")
-			_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for version")
-			_, _ = fmt.Fprintln(os.Stdout, "")
-			_, _ = fmt.Fprintln(os.Stdout, "Global Flags:")
-			_, _ = fmt.Fprintln(os.Stdout, "      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
-			_, _ = fmt.Fprintln(os.Stdout, "      --db string                 Database path (default: auto-discover .sq/store.db)")
-			_, _ = fmt.Fprintln(os.Stdout, "      --dolt-auto-commit string   Accepted compatibility flag (off|on|batch)")
-			_, _ = fmt.Fprintln(os.Stdout, "      --json                      Output in JSON format")
-			_, _ = fmt.Fprintln(os.Stdout, "      --profile                   Generate CPU profile for performance analysis")
-			_, _ = fmt.Fprintln(os.Stdout, "  -q, --quiet                     Suppress non-essential output (errors only)")
-			_, _ = fmt.Fprintln(os.Stdout, "      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
-			_, _ = fmt.Fprintln(os.Stdout, "      --sandbox                   Sandbox mode: disables auto-sync")
-			_, _ = fmt.Fprintln(os.Stdout, "  -v, --verbose                   Enable verbose/debug output")
+			printVersionHelp()
 			return 0
 		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			// accepted compatibility flags (no-op)

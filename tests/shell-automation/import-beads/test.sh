@@ -136,12 +136,16 @@ seed_source_db "$SOURCE_DB"
 
 # 1) Help / discovery surface
 HELP_OUT="$($SQ_BIN help import-beads)"
-assert_contains "$HELP_OUT" "Help for command: import-beads"
-assert_contains "$HELP_OUT" "Usage: sq import-beads [args]"
+assert_contains "$HELP_OUT" "Import tasks, dependencies, and comments from a beads sqlite database."
+assert_contains "$HELP_OUT" "sq import-beads [flags]"
+assert_contains "$HELP_OUT" "--source string"
 
 run_capture help_flag "$SQ_BIN" import-beads --help
-assert_eq "$RUN_CODE" "2"
-assert_contains "$RUN_ERR" "unknown flag: --help"
+assert_eq "$RUN_CODE" "0"
+assert_contains "$RUN_OUT" "Import tasks, dependencies, and comments from a beads sqlite database."
+assert_contains "$RUN_OUT" "sq import-beads [flags]"
+assert_contains "$RUN_OUT" "--dry-run"
+assert_contains "$RUN_OUT" "--no-comments"
 
 # 2) Baseline success path with explicit source
 TARGET_DB="$TMP_DIR/target.sqlite"

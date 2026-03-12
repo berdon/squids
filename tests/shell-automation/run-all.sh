@@ -9,6 +9,7 @@ if [[ ! -x "$SQ_BIN" ]]; then
 fi
 SQ_BIN="$(cd "$(dirname "$SQ_BIN")" && pwd)/$(basename "$SQ_BIN")"
 export SQ_BIN
+export REPO_ROOT="$ROOT_DIR"
 
 mapfile -t scripts < <(find "$ROOT_DIR/tests/shell-automation" -mindepth 2 -maxdepth 2 -name test.sh | sort)
 

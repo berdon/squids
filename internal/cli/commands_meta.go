@@ -279,23 +279,33 @@ func cmdComments(args []string) int {
 			a := args[i]
 			switch a {
 			case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
-				if a == "--json" { jsonOut = true }
+				if a == "--json" {
+					jsonOut = true
+				}
 			case "--help", "-h":
 				printCommentsAddHelp()
 				return 0
 			case "--author", "-a":
-				if i+1 >= len(args) { return failUsage("missing value for " + a) }
+				if i+1 >= len(args) {
+					return failUsage("missing value for " + a)
+				}
 				author = args[i+1]
 				i++
 			case "--file", "-f":
-				if i+1 >= len(args) { return failUsage("missing value for " + a) }
+				if i+1 >= len(args) {
+					return failUsage("missing value for " + a)
+				}
 				bodyFile = args[i+1]
 				i++
 			case "--actor", "--db", "--dolt-auto-commit":
-				if i+1 >= len(args) { return failUsage("missing value for " + a) }
+				if i+1 >= len(args) {
+					return failUsage("missing value for " + a)
+				}
 				i++
 			default:
-				if strings.HasPrefix(a, "-") { return failUsage("unknown flag: " + a) }
+				if strings.HasPrefix(a, "-") {
+					return failUsage("unknown flag: " + a)
+				}
 				if issueID == "" {
 					issueID = a
 				} else if body == "" {
@@ -336,14 +346,20 @@ func cmdComments(args []string) int {
 		a := args[i]
 		switch a {
 		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
-			if a == "--json" { jsonOut = true }
+			if a == "--json" {
+				jsonOut = true
+			}
 		case "--local-time":
 			localTime = true
 		case "--actor", "--db", "--dolt-auto-commit":
-			if i+1 >= len(args) { return failUsage("missing value for " + a) }
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
 			i++
 		default:
-			if strings.HasPrefix(a, "-") { return failUsage("unknown flag: " + a) }
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
 			if issueID == "" {
 				issueID = a
 			} else {
@@ -558,32 +574,30 @@ func cmdChildren(args []string) int {
 	return printJSON(items)
 }
 
+func printBlockedHelp() {
+	fmt.Println("Show blocked issues")
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  sq blocked [flags]")
+	fmt.Println("")
+	fmt.Println("Flags:")
+	fmt.Println("  -h, --help            help for blocked")
+	fmt.Println("      --parent string   Filter to descendants of this bead/epic")
+	fmt.Println("")
+	printGlobalFlags()
+}
+
 func cmdBlocked(args []string) int {
+	jsonOut := false
 	parentID := ""
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
-		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+		case "--json":
+			jsonOut = true
+		case "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
 			continue
 		case "--help", "-h":
-			fmt.Println("Show blocked issues")
-			fmt.Println("")
-			fmt.Println("Usage:")
-			fmt.Println("  sq blocked [flags]")
-			fmt.Println("")
-			fmt.Println("Flags:")
-			fmt.Println("  -h, --help            help for blocked")
-			fmt.Println("      --parent string   Filter to descendants of this bead/epic")
-			fmt.Println("")
-			fmt.Println("Global Flags:")
-			fmt.Println("      --actor string              Actor name for audit trail (default: $SQ_ACTOR, git user.name, $USER)")
-			fmt.Println("      --db string                 Database path (default: auto-discover .squids/*.db)")
-			fmt.Println("      --dolt-auto-commit string   Accepted compatibility flag (sqlite backend ignores it)")
-			fmt.Println("      --json                      Output in JSON format")
-			fmt.Println("      --profile                   Generate CPU profile for performance analysis")
-			fmt.Println("  -q, --quiet                     Suppress non-essential output (errors only)")
-			fmt.Println("      --readonly                  Read-only mode: block write operations (for worker sandboxes)")
-			fmt.Println("      --sandbox                   Sandbox mode: disables auto-sync")
-			fmt.Println("  -v, --verbose                   Enable verbose/debug output")
+			printBlockedHelp()
 			return 0
 		case "--parent":
 			if i+1 >= len(args) {
@@ -600,6 +614,7 @@ func cmdBlocked(args []string) int {
 			if strings.HasPrefix(args[i], "-") {
 				return failUsage("unknown flag: " + args[i])
 			}
+			return failUsage("blocked does not accept positional arguments")
 		}
 	}
 	db, _, err := openTaskDB()
@@ -611,20 +626,31 @@ func cmdBlocked(args []string) int {
 	if err != nil {
 		return failRuntime(err.Error())
 	}
-	if parentID == "" {
+	if parentID != "" {
+		descendants, err := blockedDescendants(db, parentID)
+		if err != nil {
+			return failRuntime(err.Error())
+		}
+		filtered := make([]store.BlockedItem, 0, len(items))
+		for _, item := range items {
+			if descendants[item.ID] {
+				filtered = append(filtered, item)
+			}
+		}
+		items = filtered
+	}
+	if jsonOut {
 		return printJSON(items)
 	}
-	descendants, err := blockedDescendants(db, parentID)
-	if err != nil {
-		return failRuntime(err.Error())
+	if len(items) == 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "No blocked issues found")
+		return 0
 	}
-	filtered := make([]store.BlockedItem, 0, len(items))
+	_, _ = fmt.Fprintf(os.Stdout, "Found %d blocked issue(s):\n", len(items))
 	for _, item := range items {
-		if descendants[item.ID] {
-			filtered = append(filtered, item)
-		}
+		_, _ = fmt.Fprintf(os.Stdout, "- %s [%s] %s (blocked by %d: %s)\n", item.ID, item.Status, item.Title, item.BlockedByCount, strings.Join(item.BlockedBy, ", "))
 	}
-	return printJSON(filtered)
+	return 0
 }
 
 func blockedDescendants(db *sql.DB, parentID string) (map[string]bool, error) {
@@ -888,21 +914,49 @@ func cmdSupersede(args []string) int {
 	return printJSON(map[string]any{"replacement": replacement, "superseded": id, "status": "closed"})
 }
 
+func printTypesHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "List the built-in sq issue types.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq types [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "  -h, --help   help for types")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json   Output in JSON format")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
+}
+
 func cmdTypes(args []string) int {
-	for _, a := range args {
-		if a == "--json" {
-			continue
-		}
-		if strings.HasPrefix(a, "-") {
-			return failUsage("unknown flag: " + a)
-		}
-	}
-	return printJSON(map[string]any{"core_types": []map[string]string{
+	jsonOut := false
+	coreTypes := []map[string]string{
 		{"name": "task", "description": "General work item (default)"},
 		{"name": "bug", "description": "Bug report or defect"},
 		{"name": "feature", "description": "New feature or enhancement"},
 		{"name": "chore", "description": "Maintenance or housekeeping"},
 		{"name": "epic", "description": "Large body of work spanning multiple issues"},
 		{"name": "decision", "description": "Architecture decision record (ADR)"},
-	}})
+	}
+	for _, a := range args {
+		switch a {
+		case "--json":
+			jsonOut = true
+		case "--help", "-h":
+			printTypesHelp()
+			return 0
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("types does not accept positional arguments")
+		}
+	}
+	if jsonOut {
+		return printJSON(map[string]any{"core_types": coreTypes})
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "Core issue types:")
+	for _, item := range coreTypes {
+		_, _ = fmt.Fprintf(os.Stdout, "- %s: %s\n", item["name"], item["description"])
+	}
+	return 0
 }

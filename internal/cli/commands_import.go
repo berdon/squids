@@ -139,7 +139,27 @@ func cmdGitLab(args []string) int {
 	}
 }
 
+func printImportBeadsHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Import tasks, dependencies, and comments from a beads sqlite database.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq import-beads [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Flags:")
+	_, _ = fmt.Fprintln(os.Stdout, "      --source string   Path to source sqlite db or directory containing it")
+	_, _ = fmt.Fprintln(os.Stdout, "      --dry-run         Report changes without writing target state")
+	_, _ = fmt.Fprintln(os.Stdout, "      --json            Output import report as JSON")
+	_, _ = fmt.Fprintln(os.Stdout, "      --no-comments     Skip importing comments")
+	_, _ = fmt.Fprintln(os.Stdout, "      --no-events       Reserved compatibility flag (accepted, no-op)")
+}
+
 func cmdImportBeads(args []string) int {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			printImportBeadsHelp()
+			return 0
+		}
+	}
 	opts, err := parseImportOptions(args)
 	if err != nil {
 		return failUsage(err.Error())
@@ -198,6 +218,8 @@ func parseImportOptions(args []string) (importOptions, error) {
 	opts := importOptions{}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--help", "-h":
+			return opts, nil
 		case "--source":
 			if i+1 >= len(args) {
 				return opts, errors.New("usage: sq import-beads [--source <path>] [--dry-run] [--json] [--no-comments] [--no-events]")
@@ -339,10 +361,10 @@ func validateSourceSchema(src *sql.DB) error {
 
 func importFromSource(src, dst *sql.DB, sourcePath string, opts importOptions) (*importReport, error) {
 	report := &importReport{
-		Source: sourcePath,
-		DryRun: opts.DryRun,
-		Tasks: map[string]int{"created": 0, "updated": 0, "unchanged": 0},
-		Deps: map[string]int{"created": 0, "unchanged": 0},
+		Source:   sourcePath,
+		DryRun:   opts.DryRun,
+		Tasks:    map[string]int{"created": 0, "updated": 0, "unchanged": 0},
+		Deps:     map[string]int{"created": 0, "unchanged": 0},
 		Comments: map[string]int{"created": 0, "unchanged": 0},
 	}
 

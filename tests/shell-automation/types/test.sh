@@ -89,12 +89,14 @@ STATUS_BEFORE="$RUN_OUT"
 
 run_capture help_cmd "$SQ_BIN" help types
 assert_eq "$RUN_CODE" "0" "sq help types"
+assert_contains "$RUN_OUT" "List the built-in sq issue types." "help command output"
 assert_contains "$RUN_OUT" "sq types [flags]" "help command usage"
 assert_contains "$RUN_OUT" "--json" "help command json flag"
 HELP_CMD_OUT="$RUN_OUT"
 
 run_capture help_flag "$SQ_BIN" types --help
 assert_eq "$RUN_CODE" "0" "sq types --help should succeed"
+assert_contains "$RUN_OUT" "List the built-in sq issue types." "types --help description"
 assert_contains "$RUN_OUT" "sq types [flags]" "types --help usage"
 assert_contains "$RUN_OUT" "--json" "types --help json flag"
 HELP_FLAG_OUT="$RUN_OUT"
@@ -102,16 +104,18 @@ assert_eq "$HELP_FLAG_OUT" "$HELP_CMD_OUT" "help command and --help parity"
 
 run_capture default "$SQ_BIN" types
 assert_eq "$RUN_CODE" "0" "sq types default"
-assert_eq "$(json_eval "$RUN_OUT" 'len(obj["core_types"])')" "6" "core type count"
-assert_eq "$(json_eval "$RUN_OUT" 'obj["core_types"][0]["name"]')" "task" "first type name"
-assert_eq "$(json_eval "$RUN_OUT" 'obj["core_types"][1]["name"]')" "bug" "second type name"
-assert_eq "$(json_eval "$RUN_OUT" 'obj["core_types"][-1]["name"]')" "decision" "last type name"
-assert_contains "$RUN_OUT" '"description": "General work item (default)"' "default output description"
+assert_contains "$RUN_OUT" "Core issue types:" "default human header"
+assert_contains "$RUN_OUT" "- task: General work item (default)" "default human task row"
+assert_contains "$RUN_OUT" "- decision: Architecture decision record (ADR)" "default human decision row"
 DEFAULT_OUT="$RUN_OUT"
 
 run_capture json "$SQ_BIN" types --json
 assert_eq "$RUN_CODE" "0" "sq types --json"
-assert_eq "$RUN_OUT" "$DEFAULT_OUT" "default and --json output parity"
+JSON_OUT="$RUN_OUT"
+assert_eq "$(json_eval "$RUN_OUT" 'len(obj["core_types"])')" "6" "core type count"
+assert_eq "$(json_eval "$RUN_OUT" 'obj["core_types"][0]["name"]')" "task" "first type name"
+assert_eq "$(json_eval "$RUN_OUT" 'obj["core_types"][1]["name"]')" "bug" "second type name"
+assert_eq "$(json_eval "$RUN_OUT" 'obj["core_types"][-1]["name"]')" "decision" "last type name"
 assert_eq "$(json_eval "$RUN_OUT" 'len({item["name"] for item in obj["core_types"]})')" "6" "unique type names"
 
 run_capture bogus "$SQ_BIN" types --bogus-flag
@@ -120,7 +124,7 @@ assert_contains "$RUN_ERR" "unknown flag: --bogus-flag" "unknown flag error"
 
 run_capture rerun "$SQ_BIN" types --json
 assert_eq "$RUN_CODE" "0" "rerun types --json"
-assert_eq "$RUN_OUT" "$DEFAULT_OUT" "idempotent rerun output"
+assert_eq "$RUN_OUT" "$JSON_OUT" "idempotent rerun output"
 
 run_capture count_after "$SQ_BIN" count --json
 assert_eq "$RUN_CODE" "0" "count after"
