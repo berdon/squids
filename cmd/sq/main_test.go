@@ -20,6 +20,12 @@ func TestMainSetsExitCodeViaRunPath(t *testing.T) {
 	}
 }
 
+func TestRunUnknownCommandReturnsNonZero(t *testing.T) {
+	if code := run([]string{"definitely-unknown-command"}); code == 0 {
+		t.Fatalf("expected unknown command non-zero exit")
+	}
+}
+
 func TestMainInvokesExitFnWithRunCode(t *testing.T) {
 	oldArgs := os.Args
 	oldExit := exitFn
@@ -37,5 +43,25 @@ func TestMainInvokesExitFnWithRunCode(t *testing.T) {
 	main()
 	if got != 0 {
 		t.Fatalf("expected main to call exitFn(0), got %d", got)
+	}
+}
+
+func TestMainInvokesExitFnWithNonZeroCode(t *testing.T) {
+	oldArgs := os.Args
+	oldExit := exitFn
+	defer func() {
+		os.Args = oldArgs
+		exitFn = oldExit
+	}()
+
+	os.Args = []string{"sq", "definitely-unknown-command"}
+	got := -1
+	exitFn = func(code int) {
+		got = code
+	}
+
+	main()
+	if got == 0 {
+		t.Fatalf("expected main to call non-zero exit code for unknown command")
 	}
 }

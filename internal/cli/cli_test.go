@@ -101,6 +101,10 @@ func TestRun_HelpAndUnknown(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "sq query") {
 		t.Fatalf("query --help failed code=%d out=%q", code, out)
 	}
+	code, out, _ = runCLI(t, db, "show", "--help")
+	if code != 0 || !strings.Contains(out, "Usage: sq show") {
+		t.Fatalf("show --help failed code=%d out=%q", code, out)
+	}
 	code, out, _ = runCLI(t, db, "help", "gate")
 	if code != 0 || !strings.Contains(out, "sq gate list") {
 		t.Fatalf("help gate failed code=%d out=%q", code, out)
@@ -150,6 +154,9 @@ func TestRun_EndToEndCommandFamilies(t *testing.T) {
 
 	if code, _, _ = runCLI(t, db, "show", aID, "--json"); code != 0 {
 		t.Fatalf("show failed")
+	}
+	if code, out, _ = runCLI(t, db, "show", aID); code != 0 || !strings.Contains(out, aID) {
+		t.Fatalf("show human failed code=%d out=%q", code, out)
 	}
 	if code, out, _ = runCLI(t, db, "list", "--json", "--flat", "--no-pager"); code != 0 || !strings.Contains(out, aID) {
 		t.Fatalf("list failed out=%q", out)
@@ -322,6 +329,7 @@ func TestRun_ErrorFlagsAndValidation(t *testing.T) {
 		{"create", "x", "--priority", "bad", "--json"},
 		{"create", "x", "--deps", ":", "--json"},
 		{"list", "--bogus"},
+		{"show", "--bogus"},
 		{"update"},
 		{"label"},
 		{"dep"},
@@ -396,6 +404,44 @@ func TestRun_BackupCommandBranches(t *testing.T) {
 	}
 	if code, out, _ := runCLI(t, db, "backup", "--help"); code != 0 || !strings.Contains(out, "sq backup") {
 		t.Fatalf("backup --help failed code=%d out=%q", code, out)
+	}
+}
+
+func TestRun_GateCommandAdditionalBranches(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
+		t.Fatalf("init failed")
+	}
+	code, out, _ := runCLI(t, db, "create", "gate branch", "--type", "gate", "--json")
+	if code != 0 {
+		t.Fatalf("create gate failed: %d", code)
+	}
+	gateID := firstID(t, out)
+
+	if code, out, _ := runCLI(t, db, "gate", "show", gateID, "--json"); code != 0 || !strings.Contains(out, gateID) {
+		t.Fatalf("gate show json failed code=%d out=%q", code, out)
+	}
+	if code, out, _ := runCLI(t, db, "gate", "resolve", gateID, "--json"); code != 0 || !strings.Contains(out, "\"status\": \"closed\"") {
+		t.Fatalf("gate resolve json failed code=%d out=%q", code, out)
+	}
+	if code, out, _ := runCLI(t, db, "gate", "list", "--all"); code != 0 || !strings.Contains(out, gateID) {
+		t.Fatalf("gate list --all human failed code=%d out=%q", code, out)
+	}
+	if code, _, errOut := runCLI(t, db, "gate", "show"); code == 0 || !strings.Contains(strings.ToLower(errOut), "usage") {
+		t.Fatalf("expected gate show usage failure code=%d err=%q", code, errOut)
+	}
+}
+
+func TestRun_BackupCommandErrorBranches(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "tasks.sqlite")
+	if code, _, _ := runCLI(t, db, "init", "--json"); code != 0 {
+		t.Fatalf("init failed")
+	}
+	if code, _, errOut := runCLI(t, db, "backup", "wat"); code == 0 || !strings.Contains(strings.ToLower(errOut), "unknown backup subcommand") {
+		t.Fatalf("expected unknown backup subcommand failure code=%d err=%q", code, errOut)
+	}
+	if code, _, errOut := runCLI(t, db, "backup", "restore", "/definitely/missing.sqlite", "--json"); code == 0 || !strings.Contains(strings.ToLower(errOut), "failed") {
+		t.Fatalf("expected missing backup restore failure code=%d err=%q", code, errOut)
 	}
 }
 

@@ -11,6 +11,28 @@ import (
 	"github.com/berdon/squids/internal/store"
 )
 
+func TestCmdMemoriesAndGitLabCompatibilityBranches(t *testing.T) {
+	code, _, errOut := captureOutput(t, func() int { return cmdMemories([]string{"--help"}) })
+	if code == 0 || !strings.Contains(strings.ToLower(errOut), "compatibility") {
+		t.Fatalf("expected memories compat runtime failure, code=%d err=%q", code, errOut)
+	}
+
+	code, out, _ := captureOutput(t, func() int { return cmdGitLab(nil) })
+	if code != 0 || !strings.Contains(out, "sq gitlab") {
+		t.Fatalf("expected gitlab usage, code=%d out=%q", code, out)
+	}
+
+	code, _, errOut = captureOutput(t, func() int { return cmdGitLab([]string{"projects"}) })
+	if code == 0 || !strings.Contains(strings.ToLower(errOut), "not yet supported") {
+		t.Fatalf("expected gitlab projects runtime failure, code=%d err=%q", code, errOut)
+	}
+
+	code, _, errOut = captureOutput(t, func() int { return cmdGitLab([]string{"wat"}) })
+	if code == 0 || !strings.Contains(strings.ToLower(errOut), "unknown gitlab subcommand") {
+		t.Fatalf("expected unknown gitlab subcommand failure, code=%d err=%q", code, errOut)
+	}
+}
+
 func TestParseImportOptions(t *testing.T) {
 	tests := []struct {
 		name string
