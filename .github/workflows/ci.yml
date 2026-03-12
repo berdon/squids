@@ -36,5 +36,8 @@ jobs:
       - name: Run sq parity suite
         run: TARGET_BIN=./bin/sq ./scripts/parity/run-parity.sh
 
+      - name: Run getting-started guide smoke
+        run: ./scripts/parity/getting-started-smoke.sh
+
       - name: Run concurrency smoke
         run: ./scripts/parity/concurrency-smoke.sh
