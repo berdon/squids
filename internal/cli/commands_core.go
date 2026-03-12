@@ -11,7 +11,37 @@ import (
 	"github.com/berdon/squids/internal/store"
 )
 
-func cmdInit() int {
+func printInitHelp() {
+	_, _ = fmt.Fprintln(os.Stdout, "Initialize sq task storage in the current workspace.")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "Usage:")
+	_, _ = fmt.Fprintln(os.Stdout, "  sq init [flags]")
+	_, _ = fmt.Fprintln(os.Stdout, "")
+	printGlobalFlags()
+}
+
+func cmdInit(args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--help", "-h":
+			printInitHelp()
+			return 0
+		case "--json", "--quiet", "-q", "--verbose", "-v", "--profile", "--readonly", "--sandbox":
+			// accepted compatibility flags (no-op)
+		case "--actor", "--db", "--dolt-auto-commit", "--prefix":
+			if i+1 >= len(args) {
+				return failUsage("missing value for " + a)
+			}
+			i++
+		default:
+			if strings.HasPrefix(a, "-") {
+				return failUsage("unknown flag: " + a)
+			}
+			return failUsage("init does not accept positional arguments")
+		}
+	}
+
 	dbPath, err := dbPathFromEnvOrCwd()
 	if err != nil {
 		return failRuntime(err.Error())
@@ -444,6 +474,12 @@ func parentLinks(db *sql.DB) (map[string]string, error) {
 }
 
 func cmdCreate(args []string) int {
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			printCreateHelp()
+			return 0
+		}
+	}
 	if len(args) == 0 {
 		return failUsage("title is required")
 	}

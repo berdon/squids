@@ -22,7 +22,7 @@ func Run(args []string) int {
 	case "-V", "--version":
 		return cmdVersion(nil)
 	case "init":
-		return cmdInit()
+		return cmdInit(args[1:])
 	case "ready":
 		return cmdReady(args[1:])
 	case "create":

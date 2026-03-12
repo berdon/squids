@@ -19,7 +19,7 @@ func TestCmdBackupAndGate_BranchCoverage(t *testing.T) {
 	db := filepath.Join(tmp, "tasks.sqlite")
 
 	withEnv("SQ_DB_PATH", db, func() {
-		if code := cmdInit(); code != 0 {
+		if code := cmdInit(nil); code != 0 {
 			t.Fatalf("init failed code=%d", code)
 		}
 		if code := cmdCreate([]string{"gate task", "--type", "gate", "--json"}); code != 0 {
@@ -59,7 +59,7 @@ func TestCmdBackup_RestoreMissingPathFails(t *testing.T) {
 	tmp := t.TempDir()
 	db := filepath.Join(tmp, "tasks.sqlite")
 	withEnv("SQ_DB_PATH", db, func() {
-		if code := cmdInit(); code != 0 {
+		if code := cmdInit(nil); code != 0 {
 			t.Fatalf("init failed code=%d", code)
 		}
 		code, _, errOut := captureOutput(t, func() int { return cmdBackup([]string{"restore", "/definitely/missing.sqlite", "--json"}) })
