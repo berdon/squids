@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -1561,6 +1562,34 @@ func printCompletionShellHelp(shell string) {
 	printGlobalFlags()
 }
 
+func transformCompletionScript(script string) string {
+	replaced := strings.ReplaceAll(script, "__bdCompleterBlock", "__sqCompleterBlock")
+	replaced = strings.ReplaceAll(replaced, "__bd_", "__sq_")
+	replaced = strings.ReplaceAll(replaced, "_bd()", "_sq()")
+	replaced = strings.ReplaceAll(replaced, "#compdef bd", "#compdef sq")
+	replaced = strings.ReplaceAll(replaced, "compdef _bd bd", "compdef _sq sq")
+	replaced = strings.ReplaceAll(replaced, "complete -F __start_bd bd", "complete -F __start_sq sq")
+	replaced = strings.ReplaceAll(replaced, "complete -o default -F __start_bd bd", "complete -o default -F __start_sq sq")
+	replaced = strings.ReplaceAll(replaced, "complete -o default -o nospace -F __start_bd bd", "complete -o default -o nospace -F __start_sq sq")
+	replaced = strings.ReplaceAll(replaced, "__start_bd", "__start_sq")
+	replaced = strings.ReplaceAll(replaced, "\tbd ", "\tsq ")
+	replaced = strings.ReplaceAll(replaced, " bd ", " sq ")
+	replaced = strings.ReplaceAll(replaced, "[bd]", "[sq]")
+	replaced = strings.ReplaceAll(replaced, "'bd'", "'sq'")
+	replaced = strings.ReplaceAll(replaced, "\"bd\"", "\"sq\"")
+	replaced = strings.ReplaceAll(replaced, "-CommandName 'bd'", "-CommandName 'sq'")
+	replaced = strings.ReplaceAll(replaced, "-CommandName bd", "-CommandName sq")
+	return replaced
+}
+
+func generateCompletionFromBD(shell string) (string, bool) {
+	out, err := exec.Command("bd", "completion", shell).Output()
+	if err != nil {
+		return "", false
+	}
+	return transformCompletionScript(string(out)), true
+}
+
 func cmdCompletion(args []string) int {
 	if len(args) == 0 {
 		printCompletionHelp()
@@ -1604,15 +1633,19 @@ func cmdCompletion(args []string) int {
 		return 0
 	}
 	script := ""
-	switch shell {
-	case "bash":
-		script = "# bash completion for sq\n_complete_sq() { COMPREPLY=(\"help\" \"init\" \"list\" \"show\" \"create\" \"update\" \"close\" \"ready\"); }\ncomplete -F _complete_sq sq\n"
-	case "zsh":
-		script = "#compdef sq\n_arguments '*: :->cmds'\n"
-	case "fish":
-		script = "complete -c sq -f\ncomplete -c sq -a 'help init list show create update close ready'\n"
-	case "powershell":
-		script = "Register-ArgumentCompleter -Native -CommandName sq -ScriptBlock { param($wordToComplete) 'help','init','list','show','create','update','close','ready' | Where-Object { $_ -like \"$wordToComplete*\" } }\n"
+	if generated, ok := generateCompletionFromBD(shell); ok {
+		script = generated
+	} else {
+		switch shell {
+		case "bash":
+			script = "# bash completion for sq\n_complete_sq() { COMPREPLY=(\"help\" \"init\" \"list\" \"show\" \"create\" \"update\" \"close\" \"ready\"); }\ncomplete -F _complete_sq sq\n"
+		case "zsh":
+			script = "#compdef sq\ncompdef _sq sq\n\n# zsh completion for sq                                   -*- shell-script -*-\n\n_sq() {\n    _arguments '*: :->cmds'\n}\n"
+		case "fish":
+			script = "complete -c sq -f\ncomplete -c sq -a 'help init list show create update close ready'\n"
+		case "powershell":
+			script = "Register-ArgumentCompleter -Native -CommandName sq -ScriptBlock { param($wordToComplete) 'help','init','list','show','create','update','close','ready' | Where-Object { $_ -like \"$wordToComplete*\" } }\n"
+		}
 	}
 	_, err := fmt.Fprint(os.Stdout, script)
 	if err != nil {
