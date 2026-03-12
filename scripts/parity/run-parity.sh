@@ -137,8 +137,7 @@ READY_JSON="$(run_target "ready --json")"
 assert_json_valid "$READY_JSON"
 assert_json_kind "$READY_JSON" "array"
 READY_PLAIN="$(run_target "ready")"
-assert_json_valid "$READY_PLAIN"
-assert_json_kind "$READY_PLAIN" "array"
+assert_contains "$READY_PLAIN" "No ready issues."
 
 # 2) create
 CREATE_JSON="$(run_target "create 'Parity lifecycle task' --type task --priority 1 --description 'shell parity' --json")"

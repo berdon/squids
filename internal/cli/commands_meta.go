@@ -204,7 +204,7 @@ func cmdDep(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
 			}
-			return failUsage("dep add accepts exactly two positional arguments")
+			return failUsage("usage: sq dep add <issue-id> <depends-on-id> [--json]")
 		}
 		db, _, err := openTaskDB()
 		if err != nil {
@@ -230,7 +230,7 @@ func cmdDep(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
 			}
-			return failUsage("dep remove accepts exactly two positional arguments")
+			return failUsage("usage: sq dep remove <issue-id> <depends-on-id> [--json]")
 		}
 		db, _, err := openTaskDB()
 		if err != nil {
@@ -256,7 +256,7 @@ func cmdDep(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return failUsage("unknown flag: " + a)
 			}
-			return failUsage("dep list accepts exactly one positional argument")
+			return failUsage("usage: sq dep list <issue-id> [--json]")
 		}
 		db, _, err := openTaskDB()
 		if err != nil {
